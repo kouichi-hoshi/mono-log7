@@ -71,7 +71,7 @@
 
    - 「認証＋Server Action＋DB＋UI」が繋がる統合テストでは、スタブを使わずに本物の実装を呼ぶ
    - ここで、スタブが間違って残っていないか、接続が本物に差し替わっているかを確認する
-   - 統合テスト用の環境（例：NODE_ENV=test かつ NEXT_PUBLIC_USE_STUB_* 未設定）では、本物の Auth.js と SQLite test DB を使う
+   - 統合テスト用の環境（例：NODE_ENV=test かつ NEXT_PUBLIC_USE_STUB_* 未設定）では、本物の Auth.js と PostgreSQL のテストDBを使う
 
 8. フェーズの区切りでスタブを整理する
 
