@@ -16,8 +16,8 @@ export default function Home() {
             </h1>
           </div>
 
-          {/* 中央: 表示切替 */}
-          <nav className="flex items-center gap-1 rounded-full bg-slate-100 p-1">
+          {/* 中央: 表示切替（md以上のみ表示） */}
+          <nav className="hidden items-center gap-1 rounded-full bg-slate-100 p-1 md:flex">
             {["すべて", "メモ", "ToDo"].map((label, index) => (
               <button
                 key={label}
@@ -36,34 +36,15 @@ export default function Home() {
           {/* 右: アクション */}
           <div className="flex items-center gap-2">
             <a
-              href="/trash"
+              href="/?view=trash"
               className="hidden rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 md:inline-flex"
             >
-              🗑️ ごみ箱
+              ごみ箱を見る
             </a>
-            <div className="hidden h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-sm font-bold text-white shadow-md transition-transform hover:scale-105 md:flex">
+            {/* ユーザーアイコン（常時表示） */}
+            <div className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-sm font-bold text-white shadow-md transition-transform hover:scale-105">
               K
             </div>
-            <button
-              type="button"
-              className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-600 transition-colors hover:bg-slate-100 md:hidden"
-              aria-label="メニューを開く"
-            >
-              <svg
-                className="h-5 w-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                aria-hidden="true"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 6h16M4 12h16M4 18h16"
-                />
-              </svg>
-            </button>
           </div>
         </div>
       </header>
@@ -113,7 +94,7 @@ export default function Home() {
                     type="button"
                     className="rounded-lg bg-gradient-to-r from-indigo-500 to-purple-600 px-5 py-2 text-sm font-semibold text-white shadow-md shadow-indigo-200 transition-all duration-200 hover:shadow-lg hover:shadow-indigo-300"
                   >
-                    保存する
+                    保存
                   </button>
                 </div>
               </div>
@@ -271,13 +252,89 @@ export default function Home() {
 
       {/* フッター */}
       <footer className="mt-auto border-t border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 px-4 py-4 text-sm text-slate-500 sm:flex-row md:px-8">
-          <span>© 2025 Mono Log</span>
-          <div className="flex items-center gap-2">
-            <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-700">
-              スタブ表示
-            </span>
-            <span className="text-slate-400">機能は未接続です</span>
+        <div className="mx-auto max-w-6xl px-4 py-4 md:px-8">
+          {/* md未満: 表示切替＋ゴミ箱リンク */}
+          <div className="mb-4 flex flex-col items-center gap-3 border-b border-slate-100 pb-4 md:hidden">
+            <nav className="flex items-center gap-1 rounded-full bg-slate-100 p-1">
+              {["すべて", "メモ", "ToDo"].map((label, index) => (
+                <button
+                  key={label}
+                  type="button"
+                  className={`rounded-full px-4 py-1.5 text-sm font-medium transition-all duration-200 ${
+                    index === 0
+                      ? "bg-white text-slate-900 shadow-sm"
+                      : "text-slate-500 hover:text-slate-700"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </nav>
+            <a
+              href="/?view=trash"
+              className="rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900"
+            >
+              ごみ箱を見る
+            </a>
+          </div>
+
+          {/* 共通: 外部リンク＋コピーライト */}
+          <div className="flex flex-col items-center justify-between gap-3 text-sm text-slate-500 sm:flex-row">
+            <span>© 2025 Mono Log</span>
+
+            {/* 外部リンク */}
+            <div className="flex items-center gap-4">
+              <a
+                href="https://github.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-slate-400 transition-colors hover:text-slate-600"
+              >
+                <span className="sr-only">GitHub</span>
+                <svg
+                  className="h-5 w-5"
+                  fill="currentColor"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              </a>
+              <a
+                href="https://x.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-slate-400 transition-colors hover:text-slate-600"
+              >
+                <span className="sr-only">X（旧Twitter）</span>
+                <svg
+                  className="h-5 w-5"
+                  fill="currentColor"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                >
+                  <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                </svg>
+              </a>
+              <a
+                href="mailto:example@example.com"
+                className="text-sm text-slate-400 transition-colors hover:text-slate-600"
+              >
+                お問い合わせ
+              </a>
+            </div>
+
+            {/* スタブ表示注記 */}
+            <div className="flex items-center gap-2">
+              <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-700">
+                スタブ表示
+              </span>
+              <span className="text-slate-400">機能は未接続です</span>
+            </div>
           </div>
         </div>
       </footer>
