@@ -52,9 +52,9 @@
 
 1. `main` ブランチへの push をトリガー。
 2. `prisma/migrations/` に変更があるかを `git diff --quiet` で確認。
-   - 変更が **ある** → `npm run db:migrate:deploy` を実行し、Neon にマイグレーション適用 → 成功後に Deploy Hook を POST。
+   - 変更が **ある** → `pnpm db:migrate:deploy` を実行し、Neon にマイグレーション適用 → 成功後に Deploy Hook を POST。
    - 変更が **ない** → 「No changes detected...」ログを出して何もしない。
-3. `npm run db:migrate:deploy` は `package.json` で `npx prisma migrate deploy` を呼び出すスクリプト。
+3. `pnpm db:migrate:deploy` は `package.json` で `pnpm exec prisma migrate deploy` を呼び出すスクリプト。
 
 > `VERCEL_DEPLOY_HOOK_URL` を未設定の場合、マイグレーションだけ実行して終了します（デプロイは手動で呼び出し）。
 
@@ -73,9 +73,9 @@ GOOGLE_CLIENT_ID="ローカル用/検証用"
 GOOGLE_CLIENT_SECRET="同上"
 ```
 
-3. 開発: `npm run dev`
-4. スキーマ変更時: `npx prisma migrate dev` → `npx prisma db seed`（必要に応じて）
-5. テスト: `npm run test`（テスト DB をリセットしてから Jest 実行）
+3. 開発: `pnpm dev`
+4. スキーマ変更時: `pnpm exec prisma migrate dev` → `pnpm exec prisma db seed`（必要に応じて）
+5. テスト: `pnpm test`（テスト DB をリセットしてから Jest 実行）
 6. 開発用エラー通知シミュレーション
    - ローカル環境で次のような URL にアクセスすると、対応するエラー／成功トーストが表示される想定
      - `http://localhost:3000/?errorTest=auth` → 認証エラー
