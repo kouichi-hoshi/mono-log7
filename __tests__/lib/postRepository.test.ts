@@ -1,34 +1,35 @@
-// 環境変数のモック
-const originalEnv = process.env;
+import { shouldUseStubPosts } from "@/lib/config/postRepositoryConfig";
+import type { CreatePostInput } from "@/lib/postRepository";
+
+jest.mock("@/lib/config/postRepositoryConfig", () => ({
+  shouldUseStubPosts: jest.fn(),
+}));
+
+const mockedShouldUseStubPosts = shouldUseStubPosts as jest.MockedFunction<
+  typeof shouldUseStubPosts
+>;
 
 describe("postRepository", () => {
   let postRepository: typeof import("@/lib/postRepository").postRepository;
   let resetStubStore: typeof import("@/lib/postRepository").resetStubStore;
 
-  beforeEach(async () => {
-    // 環境変数をリセットし、スタブを有効化
-    process.env = { ...originalEnv };
-    process.env.NODE_ENV = "development";
-    process.env.NEXT_PUBLIC_USE_STUB_POSTS = "true";
-
-    // モジュールキャッシュをクリアして再読み込み
-    jest.resetModules();
+  beforeAll(async () => {
+    mockedShouldUseStubPosts.mockReturnValue(true);
     const module = await import("@/lib/postRepository");
     postRepository = module.postRepository;
     resetStubStore = module.resetStubStore;
-    // スタブストアをリセット
+  });
+
+  beforeEach(() => {
+    mockedShouldUseStubPosts.mockReturnValue(true);
     resetStubStore();
+    jest.clearAllMocks();
+    mockedShouldUseStubPosts.mockReturnValue(true);
   });
 
-  afterAll(() => {
-    // 環境変数を復元
-    process.env = originalEnv;
-  });
-
-  describe("環境変数ガード", () => {
-    it("NODE_ENV=production ではスタブが無効になる", async () => {
-      process.env.NODE_ENV = "production";
-      process.env.NEXT_PUBLIC_USE_STUB_POSTS = "true";
+  describe("スタブ切り替え", () => {
+    it("スタブが無効な場合は本番未実装エラーになる", async () => {
+      mockedShouldUseStubPosts.mockReturnValue(false);
 
       await expect(
         postRepository.create({
@@ -39,22 +40,8 @@ describe("postRepository", () => {
       ).rejects.toThrow("本番投稿CRUDは未実装です");
     });
 
-    it("NEXT_PUBLIC_USE_STUB_POSTS=false ではスタブが無効になる", async () => {
-      process.env.NODE_ENV = "development";
-      process.env.NEXT_PUBLIC_USE_STUB_POSTS = "false";
-
-      await expect(
-        postRepository.create({
-          authorId: "test-user",
-          contentJSON: '{"type":"doc"}',
-          mode: "memo",
-        }),
-      ).rejects.toThrow("本番投稿CRUDは未実装です");
-    });
-
-    it("スタブ有効時はcreateが動作する", async () => {
-      process.env.NODE_ENV = "development";
-      process.env.NEXT_PUBLIC_USE_STUB_POSTS = "true";
+    it("スタブが有効な場合はcreateが動作する", async () => {
+      mockedShouldUseStubPosts.mockReturnValue(true);
 
       const result = await postRepository.create({
         authorId: "test-user",
@@ -76,13 +63,8 @@ describe("postRepository", () => {
   });
 
   describe("create", () => {
-    beforeEach(() => {
-      process.env.NODE_ENV = "development";
-      process.env.NEXT_PUBLIC_USE_STUB_POSTS = "true";
-    });
-
     it("投稿を作成できる", async () => {
-      const input = {
+      const input: CreatePostInput = {
         authorId: "test-user-1",
         contentJSON:
           '{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"テスト投稿"}]}]}',
@@ -115,17 +97,10 @@ describe("postRepository", () => {
   });
 
   describe("findMany", () => {
-    beforeEach(() => {
-      process.env.NODE_ENV = "development";
-      process.env.NEXT_PUBLIC_USE_STUB_POSTS = "true";
-    });
-
     it("デフォルトで10件取得できる（更新日降順）", async () => {
-      // 初期データ（samplePostsから20件）がロードされている
       const posts = await postRepository.findMany();
 
       expect(posts.length).toBeLessThanOrEqual(10);
-      // 更新日降順でソートされているか確認
       for (let i = 0; i < posts.length - 1; i++) {
         expect(posts[i].updatedAt.getTime()).toBeGreaterThanOrEqual(
           posts[i + 1].updatedAt.getTime(),
@@ -142,7 +117,6 @@ describe("postRepository", () => {
     });
 
     it("statusでフィルタできる", async () => {
-      // 1件をゴミ箱に移動
       const posts = await postRepository.findMany();
       if (posts.length > 0) {
         await postRepository.softDelete(posts[0].postId);
@@ -173,7 +147,6 @@ describe("postRepository", () => {
 
       expect(firstPage.length).toBeLessThanOrEqual(5);
       expect(secondPage.length).toBeLessThanOrEqual(5);
-      // 重複がないことを確認
       const firstIds = new Set(firstPage.map((p) => p.postId));
       const secondIds = new Set(secondPage.map((p) => p.postId));
       expect([...firstIds].some((id) => secondIds.has(id))).toBe(false);
@@ -191,14 +164,12 @@ describe("postRepository", () => {
         limit: 10,
       });
 
-      // 降順
       for (let i = 0; i < updatedDesc.length - 1; i++) {
         expect(updatedDesc[i].updatedAt.getTime()).toBeGreaterThanOrEqual(
           updatedDesc[i + 1].updatedAt.getTime(),
         );
       }
 
-      // 昇順
       for (let i = 0; i < updatedAsc.length - 1; i++) {
         expect(updatedAsc[i].updatedAt.getTime()).toBeLessThanOrEqual(
           updatedAsc[i + 1].updatedAt.getTime(),
@@ -208,11 +179,6 @@ describe("postRepository", () => {
   });
 
   describe("findById", () => {
-    beforeEach(() => {
-      process.env.NODE_ENV = "development";
-      process.env.NEXT_PUBLIC_USE_STUB_POSTS = "true";
-    });
-
     it("存在する投稿を取得できる", async () => {
       const created = await postRepository.create({
         authorId: "test-user",
@@ -234,11 +200,6 @@ describe("postRepository", () => {
   });
 
   describe("update", () => {
-    beforeEach(() => {
-      process.env.NODE_ENV = "development";
-      process.env.NEXT_PUBLIC_USE_STUB_POSTS = "true";
-    });
-
     it("投稿を更新できる", async () => {
       const created = await postRepository.create({
         authorId: "test-user",
@@ -273,7 +234,7 @@ describe("postRepository", () => {
       });
 
       expect(updated.contentJSON).toBe('{"type":"doc","content":[]}');
-      expect(updated.mode).toBe("memo"); // 変更されていない
+      expect(updated.mode).toBe("memo");
     });
 
     it("存在しない投稿の更新はエラー", async () => {
@@ -286,11 +247,6 @@ describe("postRepository", () => {
   });
 
   describe("softDelete", () => {
-    beforeEach(() => {
-      process.env.NODE_ENV = "development";
-      process.env.NEXT_PUBLIC_USE_STUB_POSTS = "true";
-    });
-
     it("投稿をゴミ箱に移動できる", async () => {
       const created = await postRepository.create({
         authorId: "test-user",
@@ -304,13 +260,11 @@ describe("postRepository", () => {
       expect(found?.status).toBe("trashed");
       expect(found?.deletedAt).not.toBeNull();
 
-      // activeな投稿一覧からは除外される
       const activePosts = await postRepository.findMany({ status: "active" });
       expect(
         activePosts.find((p) => p.postId === created.postId),
       ).toBeUndefined();
 
-      // trashedな投稿一覧には含まれる
       const trashedPosts = await postRepository.findMany({
         status: "trashed",
       });
@@ -327,11 +281,6 @@ describe("postRepository", () => {
   });
 
   describe("restore", () => {
-    beforeEach(() => {
-      process.env.NODE_ENV = "development";
-      process.env.NEXT_PUBLIC_USE_STUB_POSTS = "true";
-    });
-
     it("ゴミ箱から復元できる", async () => {
       const created = await postRepository.create({
         authorId: "test-user",
@@ -346,7 +295,6 @@ describe("postRepository", () => {
       expect(found?.status).toBe("active");
       expect(found?.deletedAt).toBeNull();
 
-      // activeな投稿一覧に含まれる
       const activePosts = await postRepository.findMany({ status: "active" });
       expect(
         activePosts.find((p) => p.postId === created.postId),
@@ -361,11 +309,6 @@ describe("postRepository", () => {
   });
 
   describe("hardDelete", () => {
-    beforeEach(() => {
-      process.env.NODE_ENV = "development";
-      process.env.NEXT_PUBLIC_USE_STUB_POSTS = "true";
-    });
-
     it("投稿を完全削除できる", async () => {
       const created = await postRepository.create({
         authorId: "test-user",
@@ -378,7 +321,6 @@ describe("postRepository", () => {
       const found = await postRepository.findById(created.postId);
       expect(found).toBeNull();
 
-      // どの一覧からも除外される
       const allPosts = await postRepository.findMany();
       expect(allPosts.find((p) => p.postId === created.postId)).toBeUndefined();
     });

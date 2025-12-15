@@ -2,14 +2,7 @@
  * 投稿リポジトリ
  * スタブ/本番の投稿CRUD処理を切り替える接続ポイント
  */
-
-// 環境変数によるスタブ切替（関数化してテスト時に動的に変更可能にする）
-function shouldUseStubPosts(): boolean {
-  return (
-    process.env.NEXT_PUBLIC_USE_STUB_POSTS === "true" &&
-    process.env.NODE_ENV !== "production"
-  );
-}
+import { shouldUseStubPosts } from "@/lib/config/postRepositoryConfig";
 
 // ドメインモデル型定義
 export type PostMode = "memo" | "todo" | "diary";
