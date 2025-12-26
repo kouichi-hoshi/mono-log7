@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -74,7 +75,9 @@ export function UiPlayground() {
                 ここにコンテンツが入ります。
               </div>
               <DialogFooter>
-                <Button variant="secondary">閉じる（×/背景でも可）</Button>
+                <DialogClose asChild>
+                  <Button variant="secondary">閉じる（×/背景でも可）</Button>
+                </DialogClose>
               </DialogFooter>
             </DialogContent>
           </Dialog>
