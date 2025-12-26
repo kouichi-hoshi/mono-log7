@@ -61,7 +61,7 @@ export const samplePosts: SamplePost[] = [
     category: "ToDo",
     updatedAt: "2025/12/06 15:00",
     createdAt: "2025/12/06 15:00",
-    body: "エラーハンドリングの実装方針を検討。トースト通知とアラートの使い分けを明確にする必要がある。",
+    body: "エラーハンドリングの実装方針を検討。sonner通知とアラートの使い分けを明確にする必要がある。",
   },
   {
     id: "post-009",
