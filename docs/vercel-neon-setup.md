@@ -77,7 +77,7 @@ GOOGLE_CLIENT_SECRET="同上"
 4. スキーマ変更時: `pnpm exec prisma migrate dev` → `pnpm exec prisma db seed`（必要に応じて）
 5. テスト: `pnpm test`（テスト DB をリセットしてから Jest 実行）
 6. 開発用エラー通知シミュレーション
-   - ローカル環境で次のような URL にアクセスすると、対応するエラー／成功トーストが表示される想定
+   - ローカル環境で次のような URL にアクセスすると、対応するエラー／成功のsonner通知が表示される想定
      - `http://localhost:3000/?errorTest=auth` → 認証エラー
      - `http://localhost:3000/?errorTest=authorization` → 認可エラー
      - `http://localhost:3000/?errorTest=notfound` → Not Found エラー
@@ -85,7 +85,7 @@ GOOGLE_CLIENT_SECRET="同上"
      - `http://localhost:3000/?errorTest=server` → サーバーエラー
      - `http://localhost:3000/?errorTest=generic` → 一般的なエラー
      - `http://localhost:3000/?errorTest=success` → 成功メッセージ
-   - トースト表示後は URL から `?errorTest=...` が削除され、リロードしても再発火しない
+   - sonner通知表示後は URL から `?errorTest=...` が削除され、リロードしても再発火しない
    - 本番環境（`NODE_ENV === "production"`）ではこの機能は無効化される
 
 ---

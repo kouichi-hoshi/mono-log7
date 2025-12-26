@@ -1,8 +1,23 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { AlertCircle } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
 
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -12,59 +27,22 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-
-type DemoToast = {
-  id: string;
-  variant: "success" | "error";
-  title: string;
-  description?: string;
-};
-
-function randomId() {
-  return Math.random().toString(16).slice(2);
-}
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { SpinnerWithFade } from "@/components/ui/spinner-with-fade";
 
 export function UiPlayground() {
   // Spinner demo
   const [isLoading, setIsLoading] = useState(false);
-  const [shouldRenderSpinner, setShouldRenderSpinner] = useState(false);
-  const spinnerUnmountTimerRef = useRef<number | null>(null);
 
-  // Toast demo (temporary; replace when shadcn Toast is implemented)
-  const [toasts, setToasts] = useState<DemoToast[]>([]);
+  // Checkbox demo (controlled)
+  const [checkedControlled, setCheckedControlled] = useState(false);
 
-  const toastContainerAriaLive = useMemo(() => {
-    // success/info could be polite; errors should be assertive.
-    return toasts.some((t) => t.variant === "error") ? "assertive" : "polite";
-  }, [toasts]);
-
-  useEffect(() => {
-    if (spinnerUnmountTimerRef.current !== null) {
-      window.clearTimeout(spinnerUnmountTimerRef.current);
-      spinnerUnmountTimerRef.current = null;
-    }
-
-    if (isLoading) {
-      setShouldRenderSpinner(true);
-      return;
-    }
-
-    // Fade-out duration: 1000ms (keep mounted during fade)
-    spinnerUnmountTimerRef.current = window.setTimeout(() => {
-      setShouldRenderSpinner(false);
-      spinnerUnmountTimerRef.current = null;
-    }, 1000);
-  }, [isLoading]);
-
-  function addToast(next: Omit<DemoToast, "id">) {
-    const id = randomId();
-    const toast: DemoToast = { id, ...next };
-    setToasts((prev) => [toast, ...prev]);
-
-    window.setTimeout(() => {
-      setToasts((prev) => prev.filter((t) => t.id !== id));
-    }, 3000);
-  }
+  // Checkbox demo (uncontrolled)
+  const [checkedUncontrolled, setCheckedUncontrolled] = useState(false);
 
   return (
     <div className="mx-auto w-full max-w-4xl space-y-10 p-6">
@@ -109,63 +87,45 @@ export function UiPlayground() {
       </section>
 
       <section className="space-y-3 rounded-lg border bg-white p-4">
-        <h2 className="font-medium">Toast（仮実装）</h2>
+        <h2 className="font-medium">sonner</h2>
         <div className="flex flex-wrap items-center gap-2">
           <Button
             onClick={() =>
-              addToast({
-                variant: "success",
-                title: "保存しました",
-                description: "成功トーストの表示確認です（仮）",
+              toast.success("保存しました", {
+                description: "成功通知の表示確認です",
               })
             }
           >
-            成功Toastを出す
+            成功通知を出す
           </Button>
           <Button
             variant="destructive"
             onClick={() =>
-              addToast({
-                variant: "error",
-                title: "失敗しました",
-                description: "エラートーストの表示確認です（仮）",
+              toast.error("失敗しました", {
+                description: "エラー通知の表示確認です",
               })
             }
           >
-            エラーToastを出す
+            エラー通知を出す
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() =>
+              toast.info("情報", {
+                description: "情報通知の表示確認です",
+              })
+            }
+          >
+            情報通知を出す
           </Button>
         </div>
         <p className="text-xs text-slate-500">
-          注: ここは shadcn の Toast
-          を入れるまでの暫定表示です。Toastコンポーネント実装後は
-          このブロックを置き換えてください。
+          sonner を使用した通知実装。画面上部中央に表示されます。
         </p>
-
-        <div
-          aria-live={toastContainerAriaLive}
-          aria-relevant="additions removals"
-          className="pointer-events-none fixed right-4 bottom-4 z-50 flex w-[min(360px,calc(100vw-2rem))] flex-col gap-2"
-        >
-          {toasts.map((t) => (
-            <div
-              key={t.id}
-              className={
-                t.variant === "error"
-                  ? "pointer-events-auto rounded-md border border-red-200 bg-red-50 p-3 shadow-sm"
-                  : "pointer-events-auto rounded-md border border-emerald-200 bg-emerald-50 p-3 shadow-sm"
-              }
-            >
-              <div className="text-sm font-medium">{t.title}</div>
-              {t.description && (
-                <div className="text-xs text-slate-700">{t.description}</div>
-              )}
-            </div>
-          ))}
-        </div>
       </section>
 
       <section className="space-y-3 rounded-lg border bg-white p-4">
-        <h2 className="font-medium">Spinner（仮実装）</h2>
+        <h2 className="font-medium">Spinner（フェード演出）</h2>
         <div className="flex flex-wrap items-center gap-2">
           <Button variant="secondary" onClick={() => setIsLoading(true)}>
             表示（フェードイン）
@@ -179,37 +139,126 @@ export function UiPlayground() {
           <div className="text-xs text-slate-500">
             状態: {isLoading ? "loading" : "idle"}
           </div>
-          {shouldRenderSpinner && (
-            <div
-              className={
-                isLoading
-                  ? "mt-3 inline-flex items-center gap-2 opacity-100 transition-opacity duration-1000"
-                  : "mt-3 inline-flex items-center gap-2 opacity-0 transition-opacity duration-1000"
-              }
-            >
-              <div
-                role="img"
-                aria-label="loading"
-                className="h-5 w-5 animate-spin rounded-full border-2 border-slate-300 border-t-slate-900"
-              />
-              <span className="text-sm text-slate-700">読み込み中…</span>
-            </div>
-          )}
+          <div className="mt-3">
+            <SpinnerWithFade isLoading={isLoading} />
+          </div>
         </div>
         <p className="text-xs text-slate-500">
-          注: ここは P1-UI-02 の Spinner
-          実装前の暫定です。Spinnerコンポーネント実装後は
-          このブロックを置き換えてください。
+          SpinnerWithFade
+          を使用。1秒かけてフェードイン/アウトし、レイアウトシフトを防止します。
         </p>
       </section>
 
-      <section className="space-y-2 rounded-lg border bg-white p-4">
-        <h2 className="font-medium">今後追加予定</h2>
-        <ul className="list-disc space-y-1 pl-5 text-sm text-slate-700">
-          <li>Alert / Alert-Dialog（確認モーダルの挙動）</li>
-          <li>Checkbox（controlled / uncontrolled）</li>
-          <li>Popover（外側クリックで閉じる等）</li>
-        </ul>
+      <section className="space-y-3 rounded-lg border bg-white p-4">
+        <h2 className="font-medium">Alert</h2>
+        <div className="space-y-3">
+          <Alert>
+            <AlertCircle className="size-4" />
+            <AlertTitle>デフォルトのAlert</AlertTitle>
+            <AlertDescription>
+              これはデフォルトバリアントのAlertです。
+            </AlertDescription>
+          </Alert>
+          <Alert variant="destructive">
+            <AlertCircle className="size-4" />
+            <AlertTitle>エラーAlert</AlertTitle>
+            <AlertDescription>
+              これはdestructiveバリアントのAlertです。
+            </AlertDescription>
+          </Alert>
+        </div>
+      </section>
+
+      <section className="space-y-3 rounded-lg border bg-white p-4">
+        <h2 className="font-medium">Alert-Dialog（確認モーダル）</h2>
+        <div className="flex flex-wrap items-center gap-2">
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="destructive">削除する</Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>本当に削除しますか？</AlertDialogTitle>
+                <AlertDialogDescription>
+                  この操作は取り消せません。データが完全に削除されます。
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>キャンセル</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => toast.success("削除しました")}
+                >
+                  削除する
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
+        <p className="text-xs text-slate-500">
+          確認ダイアログの表示。キャンセル/確定の2ボタン操作、ESC/背景クリックで閉じます。
+        </p>
+      </section>
+
+      <section className="space-y-3 rounded-lg border bg-white p-4">
+        <h2 className="font-medium">Checkbox</h2>
+        <div className="space-y-4">
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="controlled"
+              checked={checkedControlled}
+              onCheckedChange={(checked) =>
+                setCheckedControlled(checked === true)
+              }
+            />
+            <label
+              htmlFor="controlled"
+              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+            >
+              Controlled Checkbox（現在: {checkedControlled ? "ON" : "OFF"}）
+            </label>
+          </div>
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="uncontrolled"
+              defaultChecked={false}
+              onCheckedChange={(checked) =>
+                setCheckedUncontrolled(checked === true)
+              }
+            />
+            <label
+              htmlFor="uncontrolled"
+              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+            >
+              Uncontrolled Checkbox（現在: {checkedUncontrolled ? "ON" : "OFF"}
+              ）
+            </label>
+          </div>
+        </div>
+        <p className="text-xs text-slate-500">
+          Controlled/uncontrolled両方のデモ。チェック状態の切替が動作します。
+        </p>
+      </section>
+
+      <section className="space-y-3 rounded-lg border bg-white p-4">
+        <h2 className="font-medium">Popover</h2>
+        <div className="flex flex-wrap items-center gap-2">
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline">Popoverを開く</Button>
+            </PopoverTrigger>
+            <PopoverContent>
+              <div className="space-y-2">
+                <h4 className="font-medium">Popoverのタイトル</h4>
+                <p className="text-sm text-muted-foreground">
+                  これはPopoverのコンテンツです。外側をクリックすると閉じます。
+                </p>
+              </div>
+            </PopoverContent>
+          </Popover>
+        </div>
+        <p className="text-xs text-slate-500">
+          アイコン押下で開閉、外側クリックで閉じる操作が動作します。
+        </p>
       </section>
     </div>
   );
