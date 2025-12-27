@@ -14,7 +14,7 @@ related_checklist: ["P2-APP-01"]
 ## 前提（依存Issue）
 
 - （今やる）next-themes ThemeProvider 導入（基盤）: RootLayout でのラップと hydration 対策
-  - `docs/issue/（今やる）next-themes_ThemeProvider導入（基盤）.md`
+  - `docs/issue/next-themes-theme-provider-foundation.md`
 
 ## ゴール
 
