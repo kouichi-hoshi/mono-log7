@@ -1,10 +1,10 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { LoginDialog } from "@/components/auth/LoginDialog";
-import { authAdapter } from "@/lib/authAdapter";
+import * as authClient from "@/lib/authAdapter/client";
 
 // モック
-jest.mock("@/lib/authAdapter");
+jest.mock("@/lib/authAdapter/client");
 jest.mock("next/navigation", () => ({
   useRouter: () => ({
     refresh: jest.fn(),
@@ -13,8 +13,8 @@ jest.mock("next/navigation", () => ({
   }),
 }));
 
-const mockSignIn = authAdapter.signIn as jest.MockedFunction<
-  typeof authAdapter.signIn
+const mockSignIn = authClient.signIn as jest.MockedFunction<
+  typeof authClient.signIn
 >;
 
 describe("LoginDialog", () => {
