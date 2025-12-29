@@ -10,7 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { authAdapter } from "@/lib/authAdapter";
+import { signIn } from "@/lib/authAdapter/client";
 
 interface LoginDialogProps {
   open: boolean;
@@ -24,7 +24,7 @@ export function LoginDialog({ open, onOpenChange }: LoginDialogProps) {
   const handleGoogleSignIn = async () => {
     startTransition(async () => {
       try {
-        await authAdapter.signIn();
+        await signIn();
         onOpenChange(false);
         // 画面B実装後は適切なルートに遷移
         router.refresh();
