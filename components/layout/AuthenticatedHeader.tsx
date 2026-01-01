@@ -12,7 +12,7 @@ interface AuthenticatedHeaderProps {
 
 export function AuthenticatedHeader({ session }: AuthenticatedHeaderProps) {
   return (
-    <header className="border-b bg-white">
+    <header className="sticky top-0 z-30 border-b bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80">
       <div className="container mx-auto px-4 py-4">
         {/* md以上: 3カラムレイアウト（ロゴ / 中央表示切替枠 / 右ユーザーアイコン） */}
         <div className="hidden md:flex md:items-center md:justify-between">

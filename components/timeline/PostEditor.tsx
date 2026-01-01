@@ -95,12 +95,25 @@ export function PostEditor({ authorId }: PostEditorProps) {
   }, [showEmptyAlert]);
 
   return (
-    <div className="container mx-auto px-4 py-4">
+    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
       <div className="space-y-4">
-        {/* モード選択 */}
-        <div className="flex flex-wrap items-center gap-3">
-          <span className="text-sm font-medium text-slate-700">モード:</span>
-          <div className="flex flex-wrap items-center gap-4">
+        {/* エディタ */}
+        <div className="rounded-lg border border-slate-300 bg-slate-50 focus-within:border-slate-400 focus-within:ring-2 focus-within:ring-slate-200 transition-all">
+          <EditorContent editor={editor} />
+        </div>
+
+        {/* 未入力アラート */}
+        {showEmptyAlert && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>内容を入力してください</AlertDescription>
+          </Alert>
+        )}
+
+        {/* モード選択とボタン群（横並び） */}
+        <div className="flex flex-wrap items-center gap-4">
+          {/* モード選択 */}
+          <div className="flex items-center gap-4">
             {(
               [
                 { value: "memo", label: "メモ" },
@@ -131,26 +144,26 @@ export function PostEditor({ authorId }: PostEditorProps) {
               );
             })}
           </div>
-        </div>
 
-        {/* エディタ */}
-        <div className="rounded-lg border border-slate-200 bg-white">
-          <EditorContent editor={editor} />
-        </div>
-
-        {/* 未入力アラート */}
-        {showEmptyAlert && (
-          <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>内容を入力してください</AlertDescription>
-          </Alert>
-        )}
-
-        {/* 保存ボタン */}
-        <div className="flex justify-end">
-          <Button onClick={handleSave} disabled={isSaving || !editor}>
-            {isSaving ? "保存中..." : "保存"}
-          </Button>
+          {/* ボタン群（右寄せ） */}
+          <div className="flex items-center gap-2 ml-auto">
+            {/* キャンセルボタン（編集時のみ表示 - 現時点では非表示） */}
+            {/* TODO: 編集機能実装時に有効化 */}
+            {/* <Button
+              variant="outline"
+              onClick={handleCancel}
+              disabled={isSaving}
+            >
+              キャンセル
+            </Button> */}
+            <Button
+              onClick={handleSave}
+              disabled={isSaving || !editor}
+              className="bg-slate-900 hover:bg-slate-800 text-white px-6"
+            >
+              {isSaving ? "保存中..." : "保存"}
+            </Button>
+          </div>
         </div>
       </div>
     </div>

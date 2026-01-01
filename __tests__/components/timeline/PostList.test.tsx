@@ -98,6 +98,9 @@ describe("PostList", () => {
       });
     });
 
+    // モードタイトルが表示される（現在は"すべて"固定）
+    expect(screen.getByRole("heading", { name: "すべて" })).toBeInTheDocument();
+
     // 10件の投稿が表示されるまで待つ
     await waitFor(() => {
       const postItems = screen.getAllByTestId("post-item");
