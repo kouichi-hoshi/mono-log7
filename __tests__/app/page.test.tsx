@@ -76,4 +76,20 @@ describe("Home page components", () => {
     });
     expect(userButtons.length).toBeGreaterThan(0);
   });
+
+  test("AuthenticatedLandingにPostEditorが表示される", () => {
+    const mockSession = {
+      userId: "stub-user-1",
+      email: "stub@example.com",
+      name: "スタブユーザー",
+    };
+
+    renderWithQueryClient(<AuthenticatedLanding session={mockSession} />);
+
+    // PostEditorのモード選択チェックボックスが表示される
+    expect(screen.getByRole("checkbox", { name: "メモ" })).toBeInTheDocument();
+    expect(screen.getByRole("checkbox", { name: "ToDo" })).toBeInTheDocument();
+    // 保存ボタンが表示される
+    expect(screen.getByRole("button", { name: "保存" })).toBeInTheDocument();
+  });
 });

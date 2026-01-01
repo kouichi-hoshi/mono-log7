@@ -57,7 +57,7 @@ export function PostItem({ post }: PostItemProps) {
               {formatDate(post.updatedAt)}
             </time>
           </div>
-          <p className="text-sm text-slate-900 whitespace-pre-wrap break-words">
+          <p className="text-sm text-slate-900 whitespace-pre-wrap wrap-break-word">
             {textContent || "(内容なし)"}
           </p>
         </div>

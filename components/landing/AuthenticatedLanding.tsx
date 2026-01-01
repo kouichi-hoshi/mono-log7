@@ -1,4 +1,5 @@
 import { AuthenticatedHeader } from "@/components/layout/AuthenticatedHeader";
+import { PostEditor } from "@/components/timeline/PostEditor";
 import { PostList } from "@/components/timeline/PostList";
 
 interface AuthenticatedLandingProps {
@@ -14,7 +15,8 @@ export function AuthenticatedLanding({ session }: AuthenticatedLandingProps) {
     <div className="flex min-h-screen flex-col">
       <AuthenticatedHeader session={session} />
       <div className="flex-1">
-        <main>
+        <main className="space-y-4">
+          <PostEditor authorId={session.userId} />
           <PostList authorId={session.userId} />
         </main>
       </div>
