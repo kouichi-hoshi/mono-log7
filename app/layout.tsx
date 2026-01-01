@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { QueryProvider } from "@/components/providers/query-provider";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
@@ -30,8 +31,10 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-slate-50 text-slate-900`}
       >
         <ThemeProvider>
-          {children}
-          <Toaster position="top-center" />
+          <QueryProvider>
+            {children}
+            <Toaster position="top-center" />
+          </QueryProvider>
         </ThemeProvider>
       </body>
     </html>

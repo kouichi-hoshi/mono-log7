@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import { AuthenticatedLanding } from "@/components/landing/AuthenticatedLanding";
 import { UnauthenticatedLanding } from "@/components/landing/UnauthenticatedLanding";
@@ -10,7 +11,37 @@ jest.mock("next/navigation", () => ({
   }),
 }));
 
+jest.mock("@/lib/postRepository", () => ({
+  postRepository: {
+    findMany: jest.fn().mockResolvedValue([]),
+  },
+}));
+
 describe("Home page components", () => {
+  let queryClient: QueryClient;
+
+  beforeEach(() => {
+    queryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+        },
+      },
+    });
+  });
+
+  afterEach(() => {
+    queryClient.clear();
+  });
+
+  const renderWithQueryClient = (component: React.ReactElement) => {
+    return render(
+      <QueryClientProvider client={queryClient}>
+        {component}
+      </QueryClientProvider>,
+    );
+  };
+
   test("UnauthenticatedLandingが正しく表示される", () => {
     render(<UnauthenticatedLanding />);
 
@@ -30,7 +61,7 @@ describe("Home page components", () => {
       name: "スタブユーザー",
     };
 
-    render(<AuthenticatedLanding session={mockSession} />);
+    renderWithQueryClient(<AuthenticatedLanding session={mockSession} />);
 
     // ログイン状態のヘッダーが表示される（ログインボタンは存在しない）
     expect(
