@@ -24,25 +24,28 @@ describe("AuthenticatedHeader", () => {
     expect(headings.length).toBe(2); // md以上用とmd未満用
   });
 
-  it("md以上では中央に表示切替枠と右側にユーザーアイコンが表示される", () => {
+  it("表示切替UIが1つだけ存在する", () => {
     render(<AuthenticatedHeader session={mockSession} />);
 
-    // md以上用のレイアウトが存在する（hidden md:flex）
-    const mdLayout = screen.getByText("表示切替UI（実装予定）");
-    expect(mdLayout).toBeInTheDocument();
-
-    // ユーザーアイコンボタンが存在する（複数あるが、少なくとも1つは存在する）
-    const userButtons = screen.getAllByRole("button", {
-      name: "ユーザーメニューを開く",
+    // 表示切替UI（nav要素）が1つだけ存在する
+    const viewSwitchers = screen.getAllByRole("navigation", {
+      name: "表示切替",
     });
-    expect(userButtons.length).toBeGreaterThan(0);
+    expect(viewSwitchers.length).toBe(1);
+
+    // data-testidで確認
+    const viewSwitcher = screen.getByTestId("view-switcher");
+    expect(viewSwitcher).toBeInTheDocument();
   });
 
-  it("md未満ではユーザーアイコンのみが表示される", () => {
+  it("表示切替UIにレスポンシブ用のクラスが付与されている", () => {
     render(<AuthenticatedHeader session={mockSession} />);
 
-    // md未満用のレイアウトが存在する（flex md:hidden）
-    // 表示切替UIはmd未満では表示されない（md以上でのみ表示）
+    const viewSwitcher = screen.getByTestId("view-switcher");
+    // md未満ではfixed bottom-0、md以上ではstaticのクラスが付与されている
+    expect(viewSwitcher).toHaveClass("fixed", "bottom-0");
+    expect(viewSwitcher).toHaveClass("md:static");
+
     // ユーザーアイコンは両方のレイアウトに存在する
     const userButtons = screen.getAllByRole("button", {
       name: "ユーザーメニューを開く",

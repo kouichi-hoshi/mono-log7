@@ -1,6 +1,7 @@
 "use client";
 
 import { UserAvatarButton } from "@/components/auth/UserAvatarButton";
+import { ViewSwitcher } from "@/components/layout/ViewSwitcher";
 
 interface AuthenticatedHeaderProps {
   session: {
@@ -12,26 +13,27 @@ interface AuthenticatedHeaderProps {
 
 export function AuthenticatedHeader({ session }: AuthenticatedHeaderProps) {
   return (
-    <header className="sticky top-0 z-30 border-b bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80">
+    <header className="fixed top-0 left-0 right-0 z-30 border-b bg-white">
       <div className="container mx-auto px-4 py-4">
-        {/* md以上: 3カラムレイアウト（ロゴ / 中央表示切替枠 / 右ユーザーアイコン） */}
-        <div className="hidden md:flex md:items-center md:justify-between">
-          <h1 className="text-lg font-semibold">Mono Log</h1>
-          {/* 中央: 表示切替UIのプレースホルダ（P1-LAY-07で実装予定） */}
-          <div className="flex-1 flex justify-center">
-            <div className="w-full max-w-md border-2 border-dashed border-slate-300 rounded px-4 py-2 text-sm text-slate-500 text-center">
-              表示切替UI（実装予定）
-            </div>
-          </div>
-          <div className="flex items-center">
+        <div className="md:grid md:grid-cols-3 md:items-center">
+          {/* md未満: ロゴ+ユーザーアイコン */}
+          <div className="flex items-center justify-between md:hidden">
+            <h1 className="text-lg font-semibold">Mono Log</h1>
             <UserAvatarButton session={session} />
           </div>
-        </div>
 
-        {/* md未満: 2カラムレイアウト（ロゴ / 右ユーザーアイコンのみ） */}
-        <div className="flex md:hidden items-center justify-between">
-          <h1 className="text-lg font-semibold">Mono Log</h1>
-          <UserAvatarButton session={session} />
+          {/* md以上: ロゴ */}
+          <h1 className="hidden text-lg font-semibold md:block">Mono Log</h1>
+
+          {/* 表示切替UI: 1つだけ配置（md未満はfixed bottom-0、md以上はstaticでヘッダー中央） */}
+          <div className="flex justify-center">
+            <ViewSwitcher />
+          </div>
+
+          {/* md以上: ユーザーアイコン */}
+          <div className="hidden md:flex md:justify-end">
+            <UserAvatarButton session={session} />
+          </div>
         </div>
       </div>
     </header>
