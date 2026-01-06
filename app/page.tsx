@@ -8,11 +8,27 @@ export const metadata: Metadata = {
   description: "シンプルなメモ/ToDoアプリ",
 };
 
-export default async function Home() {
+interface HomeProps {
+  searchParams: Promise<{
+    mode?: string;
+    view?: string;
+  }>;
+}
+
+export default async function Home({ searchParams }: HomeProps) {
   const session = await getSession();
+  const params = await searchParams;
 
   if (session) {
-    return <AuthenticatedLanding session={session} />;
+    return (
+      <AuthenticatedLanding
+        session={session}
+        searchParams={{
+          mode: params.mode || "all",
+          view: params.view,
+        }}
+      />
+    );
   }
 
   return <UnauthenticatedLanding />;

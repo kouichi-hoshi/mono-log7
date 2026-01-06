@@ -9,10 +9,16 @@ import { toast } from "sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { type PostMode, postRepository } from "@/lib/postRepository";
+import {
+  type PostDTO,
+  type PostMode,
+  postRepository,
+} from "@/lib/postRepository";
 
 interface PostEditorProps {
   authorId: string;
+  editingPost?: PostDTO;
+  onFinishEdit?: () => void;
 }
 
 /**
@@ -20,15 +26,22 @@ interface PostEditorProps {
  * 投稿エディタコンポーネント
  * tiptapエディタとモード選択、保存機能を提供
  */
-export function PostEditor({ authorId }: PostEditorProps) {
+export function PostEditor({
+  authorId,
+  editingPost,
+  onFinishEdit,
+}: PostEditorProps) {
   const queryClient = useQueryClient();
-  const [mode, setMode] = useState<PostMode>("memo");
+  const [mode, setMode] = useState<PostMode>(editingPost?.mode || "memo");
   const [showEmptyAlert, setShowEmptyAlert] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
+  // 編集モードの初期コンテンツを準備
+  const initialContent = editingPost ? JSON.parse(editingPost.contentJSON) : "";
+
   const editor = useEditor({
     extensions: [StarterKit],
-    content: "",
+    content: initialContent,
     editorProps: {
       attributes: {
         class:
@@ -38,6 +51,15 @@ export function PostEditor({ authorId }: PostEditorProps) {
     // SSR環境では即時描画を無効化し、ハイドレーションのずれを防ぐ
     immediatelyRender: false,
   });
+
+  // 編集モードが変更されたときにエディタの内容を更新
+  useEffect(() => {
+    if (!editor || !editingPost) return;
+
+    const content = JSON.parse(editingPost.contentJSON);
+    editor.commands.setContent(content);
+    setMode(editingPost.mode);
+  }, [editor, editingPost]);
 
   const handleSave = async () => {
     if (!editor) return;
@@ -55,19 +77,38 @@ export function PostEditor({ authorId }: PostEditorProps) {
     setShowEmptyAlert(false);
 
     try {
-      await postRepository.create({
-        authorId,
-        contentJSON,
-        mode,
-      });
+      if (editingPost) {
+        // 更新処理
+        await postRepository.update(editingPost.postId, {
+          contentJSON,
+          mode,
+        });
 
-      // 成功通知
-      toast.success("保存しました");
+        // 成功通知
+        toast.success("更新しました");
 
-      // エディタクリア
-      editor.commands.clearContent();
-      // フォーカスを戻す
-      editor.commands.focus("end");
+        // エディタをリセットしてフォーカスを戻す
+        editor.commands.clearContent();
+        editor.commands.focus("end");
+
+        // 編集モードを終了
+        onFinishEdit?.();
+      } else {
+        // 新規作成処理
+        await postRepository.create({
+          authorId,
+          contentJSON,
+          mode,
+        });
+
+        // 成功通知
+        toast.success("保存しました");
+
+        // エディタクリア
+        editor.commands.clearContent();
+        // フォーカスを戻す
+        editor.commands.focus("end");
+      }
 
       // 一覧のキャッシュを無効化して再取得
       queryClient.invalidateQueries({
@@ -75,10 +116,14 @@ export function PostEditor({ authorId }: PostEditorProps) {
       });
     } catch (error) {
       console.warn("保存エラー:", error);
-      // TODO: エラーハンドリングは後続フェーズで実装
+      toast.error("保存に失敗しました");
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleCancel = () => {
+    onFinishEdit?.();
   };
 
   // 未入力アラートを自動的に閉じる。アンマウント時や再表示時にタイマーをクリア。
@@ -147,21 +192,28 @@ export function PostEditor({ authorId }: PostEditorProps) {
 
           {/* ボタン群（右寄せ） */}
           <div className="flex items-center gap-2 ml-auto">
-            {/* キャンセルボタン（編集時のみ表示 - 現時点では非表示） */}
-            {/* TODO: 編集機能実装時に有効化 */}
-            {/* <Button
-              variant="outline"
-              onClick={handleCancel}
-              disabled={isSaving}
-            >
-              キャンセル
-            </Button> */}
+            {/* キャンセルボタン（編集時のみ表示） */}
+            {editingPost && (
+              <Button
+                variant="outline"
+                onClick={handleCancel}
+                disabled={isSaving}
+              >
+                キャンセル
+              </Button>
+            )}
             <Button
               onClick={handleSave}
               disabled={isSaving || !editor}
               className="bg-slate-900 hover:bg-slate-800 text-white px-6"
             >
-              {isSaving ? "保存中..." : "保存"}
+              {isSaving
+                ? editingPost
+                  ? "更新中..."
+                  : "保存中..."
+                : editingPost
+                  ? "更新"
+                  : "保存"}
             </Button>
           </div>
         </div>

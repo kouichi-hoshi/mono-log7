@@ -2,13 +2,11 @@ import { render, screen } from "@testing-library/react";
 import { AuthenticatedLanding } from "@/components/landing/AuthenticatedLanding";
 import { QueryProvider } from "@/components/providers/query-provider";
 
-jest.mock("next/navigation", () => ({
-  useRouter: () => ({
-    refresh: jest.fn(),
-    push: jest.fn(),
-    replace: jest.fn(),
-  }),
-}));
+jest.mock("next/navigation");
+
+const { __resetSearchParams } = jest.requireMock("next/navigation") as {
+  __resetSearchParams: () => void;
+};
 
 describe("AuthenticatedLanding", () => {
   const mockSession = {
@@ -20,6 +18,10 @@ describe("AuthenticatedLanding", () => {
   const renderWithProviders = (component: React.ReactElement) => {
     return render(<QueryProvider>{component}</QueryProvider>);
   };
+
+  beforeEach(() => {
+    __resetSearchParams();
+  });
 
   it("メイン領域にfixedヘッダー分のpadding-topと下部固定UI分のpadding-bottomが付与されている", () => {
     const { container } = renderWithProviders(

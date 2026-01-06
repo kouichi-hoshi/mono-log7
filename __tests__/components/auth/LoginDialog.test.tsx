@@ -5,13 +5,7 @@ import * as authClient from "@/lib/authAdapter/client";
 
 // モック
 jest.mock("@/lib/authAdapter/client");
-jest.mock("next/navigation", () => ({
-  useRouter: () => ({
-    refresh: jest.fn(),
-    push: jest.fn(),
-    replace: jest.fn(),
-  }),
-}));
+jest.mock("next/navigation");
 
 const mockSignIn = authClient.signIn as jest.MockedFunction<
   typeof authClient.signIn

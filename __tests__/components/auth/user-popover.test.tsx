@@ -1,14 +1,21 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { useRouter } from "next/navigation";
 import { UserPopover } from "@/components/auth/UserPopover";
 import * as authClient from "@/lib/authAdapter/client";
 
 jest.mock("@/lib/authAdapter/client");
+jest.mock("next/navigation");
 
-jest.mock("next/navigation", () => ({
-  useRouter: jest.fn(),
-}));
+const { __setRouterMock, __resetRouterMock } = jest.requireMock(
+  "next/navigation",
+) as {
+  __setRouterMock: (overrides?: {
+    refresh?: jest.Mock;
+    push?: jest.Mock;
+    replace?: jest.Mock;
+  }) => void;
+  __resetRouterMock: () => void;
+};
 
 describe("UserPopover", () => {
   const mockRefresh = jest.fn();
@@ -21,11 +28,17 @@ describe("UserPopover", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    (useRouter as jest.Mock).mockReturnValue({
+    mockRefresh.mockReset();
+    mockPush.mockReset();
+    __setRouterMock({
       refresh: mockRefresh,
       push: mockPush,
       replace: jest.fn(),
     });
+  });
+
+  afterEach(() => {
+    __resetRouterMock();
   });
 
   it("トリガーボタンクリックでポップオーバーが開く", async () => {

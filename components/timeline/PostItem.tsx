@@ -1,3 +1,4 @@
+import dayjs from "dayjs";
 import { Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { PostDTO } from "@/lib/postRepository";
@@ -5,13 +6,22 @@ import type { PostDTO } from "@/lib/postRepository";
 interface PostItemProps {
   post: PostDTO;
   isLast?: boolean;
+  view?: "trash";
+  onEdit?: (post: PostDTO) => void;
+  onDelete?: (postId: string) => void;
 }
 
 /**
  * PostItem
  * 個別投稿の表示コンポーネント
  */
-export function PostItem({ post, isLast = false }: PostItemProps) {
+export function PostItem({
+  post,
+  isLast = false,
+  view,
+  onEdit,
+  onDelete,
+}: PostItemProps) {
   // tiptap JSONからテキストを抽出（暫定実装）
   let textContent = "";
   try {
@@ -31,15 +41,9 @@ export function PostItem({ post, isLast = false }: PostItemProps) {
   const modeLabel =
     post.mode === "memo" ? "メモ" : post.mode === "todo" ? "ToDo" : "日記";
 
-  // 日時フォーマット（暫定: Intl.DateTimeFormat使用）
+  // 日時フォーマット（dayjs使用）
   const formatDate = (date: Date) => {
-    return new Intl.DateTimeFormat("ja-JP", {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-    }).format(date);
+    return dayjs(date).format("YYYY/MM/DD HH:mm");
   };
 
   // モードに応じたバッジの色
@@ -79,34 +83,34 @@ export function PostItem({ post, isLast = false }: PostItemProps) {
           </p>
         </div>
         {/* 右側のアクションボタン群 */}
-        <div className="flex items-center gap-1 shrink-0">
-          {/* 編集ボタン */}
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 w-8 p-0 text-slate-400 hover:text-slate-600 hover:bg-slate-100"
-            onClick={() => {
-              // TODO: 編集機能実装時に有効化（P1-EDIT-06/07）
-              console.log("編集ボタン押下（未実装）");
-            }}
-            aria-label="編集"
-          >
-            <Pencil className="h-4 w-4" />
-          </Button>
-          {/* ごみ箱アイコン */}
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 w-8 p-0 text-slate-400 hover:text-red-500 hover:bg-red-50"
-            onClick={() => {
-              // TODO: ごみ箱機能実装時に有効化（P1-LIST-05）
-              console.log("ごみ箱ボタン押下（未実装）");
-            }}
-            aria-label="ごみ箱へ移動"
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        </div>
+        {view !== "trash" && (
+          <div className="flex items-center gap-1 shrink-0">
+            {/* 編集ボタン */}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0 text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+              onClick={() => {
+                onEdit?.(post);
+              }}
+              aria-label="編集"
+            >
+              <Pencil className="h-4 w-4" />
+            </Button>
+            {/* ごみ箱アイコン */}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0 text-slate-400 hover:text-red-500 hover:bg-red-50"
+              onClick={() => {
+                onDelete?.(post.postId);
+              }}
+              aria-label="ごみ箱へ移動"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
       </div>
     </article>
   );

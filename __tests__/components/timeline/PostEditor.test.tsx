@@ -8,6 +8,7 @@ import type { PostDTO } from "@/lib/postRepository";
 jest.mock("@/lib/postRepository", () => ({
   postRepository: {
     create: jest.fn(),
+    update: jest.fn(),
   },
   PostMode: {},
 }));
@@ -41,6 +42,9 @@ const mockPostRepository = require("@/lib/postRepository").postRepository as {
   create: jest.MockedFunction<
     typeof import("@/lib/postRepository").postRepository.create
   >;
+  update: jest.MockedFunction<
+    typeof import("@/lib/postRepository").postRepository.update
+  >;
 };
 
 const mockToast = require("sonner").toast as {
@@ -63,6 +67,7 @@ describe("PostEditor", () => {
     commands: {
       clearContent: jest.fn().mockReturnValue(true),
       focus: jest.fn().mockReturnValue(true),
+      setContent: jest.fn().mockReturnValue(true),
     },
   } as unknown as ReturnType<typeof mockUseEditor>;
 
@@ -262,5 +267,156 @@ describe("PostEditor", () => {
     expect(mockEditor.commands.clearContent).toHaveBeenCalled();
     // フォーカスが戻る
     expect(mockEditor.commands.focus).toHaveBeenCalledWith("end");
+  });
+
+  it("editingPostが渡されると編集モードになり、エディタに投稿内容がロードされる", async () => {
+    const editingPost: PostDTO = {
+      postId: "edit-post-1",
+      authorId: TEST_AUTHOR_ID,
+      contentJSON:
+        '{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"編集する投稿"}]}]}',
+      status: "active",
+      mode: "todo",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      deletedAt: null,
+    };
+
+    // useEditorが編集モードで呼ばれることを確認するため、モックを設定
+    mockUseEditor.mockReturnValue(mockEditor);
+    mockEditor.getText.mockReturnValue("編集する投稿");
+
+    renderWithQueryClient(
+      <PostEditor authorId={TEST_AUTHOR_ID} editingPost={editingPost} />,
+    );
+
+    await waitFor(() => {
+      const editor = document.querySelector(".ProseMirror");
+      expect(editor).toBeInTheDocument();
+    });
+
+    // useEditorが編集モードで呼ばれる（contentが設定される）
+    expect(mockUseEditor).toHaveBeenCalledWith(
+      expect.objectContaining({
+        content: JSON.parse(editingPost.contentJSON),
+      }),
+    );
+
+    // ToDoモードが選択されている
+    const todoCheckbox = screen.getByRole("checkbox", { name: "ToDo" });
+    expect(todoCheckbox).toBeChecked();
+
+    // 更新ボタンが表示される
+    expect(screen.getByRole("button", { name: "更新" })).toBeInTheDocument();
+  });
+
+  it("編集モードで更新ボタンをクリックするとpostRepository.updateが呼ばれる", async () => {
+    const user = userEvent.setup();
+    const editingPost: PostDTO = {
+      postId: "edit-post-1",
+      authorId: TEST_AUTHOR_ID,
+      contentJSON:
+        '{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"編集する投稿"}]}]}',
+      status: "active",
+      mode: "memo",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      deletedAt: null,
+    };
+
+    const updatedPost: PostDTO = {
+      ...editingPost,
+      contentJSON:
+        '{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"更新された投稿"}]}]}',
+      updatedAt: new Date(),
+    };
+
+    mockPostRepository.update.mockResolvedValue(updatedPost);
+    mockEditor.getText.mockReturnValue("更新された投稿");
+    mockEditor.getJSON.mockReturnValue({
+      type: "doc",
+      content: [
+        {
+          type: "paragraph",
+          content: [{ type: "text", text: "更新された投稿" }],
+        },
+      ],
+    });
+
+    const onFinishEdit = jest.fn();
+
+    renderWithQueryClient(
+      <PostEditor
+        authorId={TEST_AUTHOR_ID}
+        editingPost={editingPost}
+        onFinishEdit={onFinishEdit}
+      />,
+    );
+
+    await waitFor(() => {
+      const editor = document.querySelector(".ProseMirror");
+      expect(editor).toBeInTheDocument();
+    });
+
+    const updateButton = screen.getByRole("button", { name: "更新" });
+    await user.click(updateButton);
+
+    await waitFor(() => {
+      expect(mockPostRepository.update).toHaveBeenCalledWith(
+        editingPost.postId,
+        {
+          contentJSON: expect.stringContaining("更新された投稿"),
+          mode: "memo",
+        },
+      );
+    });
+
+    // toast.successが呼ばれる
+    await waitFor(() => {
+      expect(mockToast.success).toHaveBeenCalledWith("更新しました");
+    });
+
+    // エディタがリセットされ、フォーカスが戻る
+    expect(mockEditor.commands.clearContent).toHaveBeenCalled();
+    expect(mockEditor.commands.focus).toHaveBeenCalledWith("end");
+
+    // onFinishEditが呼ばれる
+    expect(onFinishEdit).toHaveBeenCalled();
+  });
+
+  it("編集モードでキャンセルボタンをクリックするとonFinishEditが呼ばれる", async () => {
+    const user = userEvent.setup();
+    const editingPost: PostDTO = {
+      postId: "edit-post-1",
+      authorId: TEST_AUTHOR_ID,
+      contentJSON:
+        '{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"編集する投稿"}]}]}',
+      status: "active",
+      mode: "memo",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      deletedAt: null,
+    };
+
+    const onFinishEdit = jest.fn();
+
+    renderWithQueryClient(
+      <PostEditor
+        authorId={TEST_AUTHOR_ID}
+        editingPost={editingPost}
+        onFinishEdit={onFinishEdit}
+      />,
+    );
+
+    await waitFor(() => {
+      const editor = document.querySelector(".ProseMirror");
+      expect(editor).toBeInTheDocument();
+    });
+
+    const cancelButton = screen.getByRole("button", { name: "キャンセル" });
+    await user.click(cancelButton);
+
+    // onFinishEditが呼ばれる
+    expect(onFinishEdit).toHaveBeenCalled();
   });
 });

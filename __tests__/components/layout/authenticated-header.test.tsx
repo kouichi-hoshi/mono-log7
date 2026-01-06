@@ -1,13 +1,11 @@
 import { render, screen } from "@testing-library/react";
 import { AuthenticatedHeader } from "@/components/layout/AuthenticatedHeader";
 
-jest.mock("next/navigation", () => ({
-  useRouter: () => ({
-    refresh: jest.fn(),
-    push: jest.fn(),
-    replace: jest.fn(),
-  }),
-}));
+jest.mock("next/navigation");
+
+const { __resetSearchParams } = jest.requireMock("next/navigation") as {
+  __resetSearchParams: () => void;
+};
 
 describe("AuthenticatedHeader", () => {
   const mockSession = {
@@ -15,6 +13,10 @@ describe("AuthenticatedHeader", () => {
     email: "stub@example.com",
     name: "スタブユーザー",
   };
+
+  beforeEach(() => {
+    __resetSearchParams();
+  });
 
   it("アプリ名が表示される", () => {
     render(<AuthenticatedHeader session={mockSession} />);

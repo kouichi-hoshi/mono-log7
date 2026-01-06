@@ -3,13 +3,11 @@ import { render, screen } from "@testing-library/react";
 import { AuthenticatedLanding } from "@/components/landing/AuthenticatedLanding";
 import { UnauthenticatedLanding } from "@/components/landing/UnauthenticatedLanding";
 
-jest.mock("next/navigation", () => ({
-  useRouter: () => ({
-    refresh: jest.fn(),
-    push: jest.fn(),
-    replace: jest.fn(),
-  }),
-}));
+jest.mock("next/navigation");
+
+const { __resetSearchParams } = jest.requireMock("next/navigation") as {
+  __resetSearchParams: () => void;
+};
 
 jest.mock("@/lib/postRepository", () => ({
   postRepository: {
@@ -28,6 +26,7 @@ describe("Home page components", () => {
         },
       },
     });
+    __resetSearchParams();
   });
 
   afterEach(() => {
@@ -61,7 +60,9 @@ describe("Home page components", () => {
       name: "スタブユーザー",
     };
 
-    renderWithQueryClient(<AuthenticatedLanding session={mockSession} />);
+    renderWithQueryClient(
+      <AuthenticatedLanding session={mockSession} searchParams={{}} />,
+    );
 
     // ログイン状態のヘッダーが表示される（ログインボタンは存在しない）
     expect(
@@ -84,7 +85,9 @@ describe("Home page components", () => {
       name: "スタブユーザー",
     };
 
-    renderWithQueryClient(<AuthenticatedLanding session={mockSession} />);
+    renderWithQueryClient(
+      <AuthenticatedLanding session={mockSession} searchParams={{}} />,
+    );
 
     // PostEditorのモード選択チェックボックスが表示される
     expect(screen.getByRole("checkbox", { name: "メモ" })).toBeInTheDocument();
