@@ -1,21 +1,17 @@
 import { jest } from "@jest/globals";
 
-type RouterMock = {
-  refresh: jest.Mock<void, []>;
-  push: jest.Mock<void, [string]>;
-  replace: jest.Mock<void, [string]>;
-};
-
-let searchParams = new URLSearchParams();
-let routerMock: RouterMock = createRouterMock();
-
-function createRouterMock(): RouterMock {
+function createRouterMock() {
   return {
     refresh: jest.fn(),
     push: jest.fn(),
     replace: jest.fn(),
   };
 }
+
+type RouterMock = ReturnType<typeof createRouterMock>;
+
+let searchParams = new URLSearchParams();
+let routerMock: RouterMock = createRouterMock();
 
 export const useRouter = () => routerMock;
 

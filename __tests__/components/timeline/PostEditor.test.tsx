@@ -82,12 +82,12 @@ describe("PostEditor", () => {
     jest.clearAllMocks();
 
     // useEditorのモック設定
-    mockUseEditor.mockReturnValue(mockEditor);
-    mockEditor.getJSON.mockReturnValue({
+    (mockUseEditor as jest.Mock).mockReturnValue(mockEditor);
+    (mockEditor.getJSON as jest.Mock).mockReturnValue({
       type: "doc",
       content: [],
     });
-    mockEditor.getText.mockReturnValue("");
+    (mockEditor.getText as jest.Mock).mockReturnValue("");
   });
 
   afterEach(() => {
@@ -188,7 +188,7 @@ describe("PostEditor", () => {
 
   it("未入力で保存押下時にAlertを表示（P1-EDIT-03）", async () => {
     const user = userEvent.setup();
-    mockEditor.getText.mockReturnValue(""); // 空文字列を返す
+    (mockEditor.getText as jest.Mock).mockReturnValue(""); // 空文字列を返す
 
     renderWithQueryClient(<PostEditor authorId={TEST_AUTHOR_ID} />);
 
@@ -226,8 +226,8 @@ describe("PostEditor", () => {
     };
 
     mockPostRepository.create.mockResolvedValue(mockCreatedPost);
-    mockEditor.getText.mockReturnValue("テスト投稿"); // テキストが入力されている状態
-    mockEditor.getJSON.mockReturnValue({
+    (mockEditor.getText as jest.Mock).mockReturnValue("テスト投稿"); // テキストが入力されている状態
+    (mockEditor.getJSON as jest.Mock).mockReturnValue({
       type: "doc",
       content: [
         {
@@ -284,7 +284,7 @@ describe("PostEditor", () => {
 
     // useEditorが編集モードで呼ばれることを確認するため、モックを設定
     mockUseEditor.mockReturnValue(mockEditor);
-    mockEditor.getText.mockReturnValue("編集する投稿");
+    (mockEditor.getText as jest.Mock).mockReturnValue("編集する投稿");
 
     renderWithQueryClient(
       <PostEditor authorId={TEST_AUTHOR_ID} editingPost={editingPost} />,
@@ -332,8 +332,8 @@ describe("PostEditor", () => {
     };
 
     mockPostRepository.update.mockResolvedValue(updatedPost);
-    mockEditor.getText.mockReturnValue("更新された投稿");
-    mockEditor.getJSON.mockReturnValue({
+    (mockEditor.getText as jest.Mock).mockReturnValue("更新された投稿");
+    (mockEditor.getJSON as jest.Mock).mockReturnValue({
       type: "doc",
       content: [
         {

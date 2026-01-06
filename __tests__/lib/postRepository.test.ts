@@ -106,7 +106,7 @@ describe("postRepository", () => {
         mode: "todo",
       });
 
-      const posts = await postRepository.findMany();
+      const { posts } = await postRepository.findMany();
       const found = posts.find((p) => p.postId === created.postId);
 
       expect(found).toBeDefined();
@@ -121,7 +121,7 @@ describe("postRepository", () => {
   describe("findMany", () => {
     // デフォルトで最大10件が取得され、更新日時の降順でソートされることを確認
     it("デフォルトで10件取得できる（更新日降順）", async () => {
-      const posts = await postRepository.findMany();
+      const { posts } = await postRepository.findMany();
 
       expect(posts.length).toBeLessThanOrEqual(10);
       for (let i = 0; i < posts.length - 1; i++) {
@@ -133,8 +133,12 @@ describe("postRepository", () => {
 
     // modeパラメータでメモ/ToDoなどの種別でフィルタリングできることを確認
     it("modeでフィルタできる", async () => {
-      const memoPosts = await postRepository.findMany({ mode: "memo" });
-      const todoPosts = await postRepository.findMany({ mode: "todo" });
+      const { posts: memoPosts } = await postRepository.findMany({
+        mode: "memo",
+      });
+      const { posts: todoPosts } = await postRepository.findMany({
+        mode: "todo",
+      });
 
       expect(memoPosts.every((p) => p.mode === "memo")).toBe(true);
       expect(todoPosts.every((p) => p.mode === "todo")).toBe(true);
@@ -142,12 +146,14 @@ describe("postRepository", () => {
 
     // statusパラメータでactive/trashedの状態でフィルタリングできることを確認
     it("statusでフィルタできる", async () => {
-      const posts = await postRepository.findMany();
+      const { posts } = await postRepository.findMany();
       if (posts.length > 0) {
         await postRepository.softDelete(posts[0].postId);
 
-        const activePosts = await postRepository.findMany({ status: "active" });
-        const trashedPosts = await postRepository.findMany({
+        const { posts: activePosts } = await postRepository.findMany({
+          status: "active",
+        });
+        const { posts: trashedPosts } = await postRepository.findMany({
           status: "trashed",
         });
 
@@ -159,15 +165,18 @@ describe("postRepository", () => {
 
     // limitパラメータで取得件数を制限できることを確認
     it("limitで件数を制限できる", async () => {
-      const posts = await postRepository.findMany({ limit: 5 });
+      const { posts } = await postRepository.findMany({ limit: 5 });
 
       expect(posts.length).toBeLessThanOrEqual(5);
     });
 
     // offsetとlimitを組み合わせてページネーションができること、重複がないことを確認
     it("offsetでページネーションできる", async () => {
-      const firstPage = await postRepository.findMany({ limit: 5, offset: 0 });
-      const secondPage = await postRepository.findMany({
+      const { posts: firstPage } = await postRepository.findMany({
+        limit: 5,
+        offset: 0,
+      });
+      const { posts: secondPage } = await postRepository.findMany({
         limit: 5,
         offset: 5,
       });
@@ -181,12 +190,12 @@ describe("postRepository", () => {
 
     // sortByとsortOrderでソート順（昇順/降順）を制御できることを確認
     it("sortByとsortOrderでソートできる", async () => {
-      const updatedDesc = await postRepository.findMany({
+      const { posts: updatedDesc } = await postRepository.findMany({
         sortBy: "updatedAt",
         sortOrder: "desc",
         limit: 10,
       });
-      const updatedAsc = await postRepository.findMany({
+      const { posts: updatedAsc } = await postRepository.findMany({
         sortBy: "updatedAt",
         sortOrder: "asc",
         limit: 10,
@@ -306,12 +315,14 @@ describe("postRepository", () => {
       expect(found?.status).toBe("trashed");
       expect(found?.deletedAt).not.toBeNull();
 
-      const activePosts = await postRepository.findMany({ status: "active" });
+      const { posts: activePosts } = await postRepository.findMany({
+        status: "active",
+      });
       expect(
         activePosts.find((p) => p.postId === created.postId),
       ).toBeUndefined();
 
-      const trashedPosts = await postRepository.findMany({
+      const { posts: trashedPosts } = await postRepository.findMany({
         status: "trashed",
       });
       expect(
@@ -347,7 +358,9 @@ describe("postRepository", () => {
       expect(found?.status).toBe("active");
       expect(found?.deletedAt).toBeNull();
 
-      const activePosts = await postRepository.findMany({ status: "active" });
+      const { posts: activePosts } = await postRepository.findMany({
+        status: "active",
+      });
       expect(
         activePosts.find((p) => p.postId === created.postId),
       ).toBeDefined();
@@ -379,7 +392,7 @@ describe("postRepository", () => {
       const found = await postRepository.findById(created.postId);
       expect(found).toBeNull();
 
-      const allPosts = await postRepository.findMany();
+      const { posts: allPosts } = await postRepository.findMany();
       expect(allPosts.find((p) => p.postId === created.postId)).toBeUndefined();
     });
 

@@ -3,6 +3,16 @@ import { render, screen } from "@testing-library/react";
 import { AuthenticatedLanding } from "@/components/landing/AuthenticatedLanding";
 import { UnauthenticatedLanding } from "@/components/landing/UnauthenticatedLanding";
 
+// IntersectionObserverをモック
+global.IntersectionObserver = class IntersectionObserver {
+  disconnect() {}
+  observe() {}
+  takeRecords() {
+    return [];
+  }
+  unobserve() {}
+} as unknown as typeof IntersectionObserver;
+
 jest.mock("next/navigation");
 
 const { __resetSearchParams } = jest.requireMock("next/navigation") as {

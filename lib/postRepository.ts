@@ -36,8 +36,14 @@ export interface FindManyOptions {
   status?: PostStatus;
   offset?: number;
   limit?: number;
+  cursor?: string; // カーソルベースページング用（投稿ID）
   sortBy?: "createdAt" | "updatedAt";
   sortOrder?: "asc" | "desc";
+}
+
+export interface FindManyResult {
+  posts: PostDTO[];
+  nextCursor?: string; // 次のページがある場合のカーソル（最後の投稿ID）
 }
 
 // スタブストア（メモリ上）
@@ -149,9 +155,11 @@ async function stubCreate(input: CreatePostInput): Promise<PostDTO> {
 /**
  * スタブCRUD: 投稿一覧取得
  */
-async function stubFindMany(options: FindManyOptions = {}): Promise<PostDTO[]> {
+async function stubFindMany(
+  options: FindManyOptions = {},
+): Promise<FindManyResult> {
   if (!shouldUseStubPosts()) {
-    return [];
+    return { posts: [] };
   }
 
   let filtered = [...stubPosts];
@@ -176,12 +184,35 @@ async function stubFindMany(options: FindManyOptions = {}): Promise<PostDTO[]> {
     return sortOrder === "asc" ? aVal - bVal : bVal - aVal;
   });
 
-  // ページネーション
-  const offset = options.offset || 0;
-  const limit = options.limit || 10;
-  filtered = filtered.slice(offset, offset + limit);
+  // カーソルベースページング
+  let startIndex = 0;
+  if (options.cursor) {
+    const cursorIndex = filtered.findIndex((p) => p.postId === options.cursor);
+    if (cursorIndex !== -1) {
+      // カーソル以降の投稿を取得（カーソル自体は含めない）
+      startIndex = cursorIndex + 1;
+    } else {
+      // カーソルが見つからない場合は空を返す
+      return { posts: [] };
+    }
+  } else if (options.offset !== undefined) {
+    // offset が指定されている場合は offset ベース
+    startIndex = options.offset;
+  }
 
-  return filtered.map((p) => ({ ...p }));
+  const limit = options.limit || 10;
+  const paginated = filtered.slice(startIndex, startIndex + limit);
+
+  // 次のページがあるかチェック
+  const hasNextPage = startIndex + limit < filtered.length;
+  const nextCursor = hasNextPage
+    ? paginated[paginated.length - 1]?.postId
+    : undefined;
+
+  return {
+    posts: paginated.map((p) => ({ ...p })),
+    nextCursor,
+  };
 }
 
 /**
@@ -312,7 +343,7 @@ export const postRepository = {
   /**
    * 投稿一覧取得
    */
-  async findMany(options?: FindManyOptions): Promise<PostDTO[]> {
+  async findMany(options?: FindManyOptions): Promise<FindManyResult> {
     if (shouldUseStubPosts()) {
       return await stubFindMany(options);
     }

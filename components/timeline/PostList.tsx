@@ -1,10 +1,17 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  type InfiniteData,
+  useInfiniteQuery,
+  useMutation,
+  useQueryClient,
+} from "@tanstack/react-query";
+import { useEffect, useMemo, useRef } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { SpinnerWithFade } from "@/components/ui/spinner-with-fade";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
+  type FindManyResult,
   type PostDTO,
   type PostMode,
   postRepository,
@@ -53,15 +60,70 @@ export function PostList({
   };
 
   const {
-    data: posts,
+    data,
     isLoading,
     isError,
-  } = useQuery({
+    isFetchingNextPage,
+    hasNextPage,
+    fetchNextPage,
+  } = useInfiniteQuery<
+    FindManyResult,
+    Error,
+    InfiniteData<FindManyResult>,
+    typeof queryKey,
+    string | undefined
+  >({
     queryKey,
-    queryFn: async () => {
-      return await postRepository.findMany(findManyOptions);
+    queryFn: async ({ pageParam }) => {
+      const result = (await postRepository.findMany({
+        ...findManyOptions,
+        cursor: pageParam,
+      })) as FindManyResult;
+      return result;
     },
+    getNextPageParam: (lastPage) => {
+      return lastPage.nextCursor;
+    },
+    initialPageParam: undefined as string | undefined,
   });
+
+  // 全ページの投稿を平坦化
+  const posts = data?.pages.flatMap((page) => page.posts) ?? [];
+
+  // Skeleton用の一意ID配列を生成（レイアウトシフト防止のため固定）
+  const skeletonKeys = useMemo(
+    () =>
+      Array.from({ length: findManyOptions.limit }, (_, i) => `skeleton-${i}`),
+    [findManyOptions.limit],
+  );
+
+  // IntersectionObserver で無限スクロールを実装
+  const loadMoreRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        if (entry.isIntersecting && hasNextPage && !isFetchingNextPage) {
+          fetchNextPage();
+        }
+      },
+      {
+        rootMargin: "100px", // 100px手前で検知
+      },
+    );
+
+    const currentRef = loadMoreRef.current;
+    if (currentRef) {
+      observer.observe(currentRef);
+    }
+
+    return () => {
+      if (currentRef) {
+        observer.unobserve(currentRef);
+      }
+    };
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   // ゴミ箱への移動（ソフト削除）のMutation
   const deleteMutation = useMutation({
@@ -127,31 +189,107 @@ export function PostList({
       {/* モードタイトル */}
       <div className="flex items-center justify-between mb-4 px-4 md:px-0">
         <h2 className="text-xl font-bold text-slate-900">{modeTitle}</h2>
-        {posts && posts.length > 0 && (
+        {posts && posts.length > 0 && !isLoading && (
           <span className="text-sm text-slate-500">{posts.length}件</span>
         )}
       </div>
 
-      <div className="mb-4 px-4 md:px-0">
-        <SpinnerWithFade isLoading={isLoading} />
-      </div>
+      {/* ローディング中はSkeletonを表示 */}
+      {isLoading && (
+        <div className="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm">
+          {skeletonKeys.map((key, index) => (
+            <div
+              key={key}
+              className={`p-4 ${
+                index < findManyOptions.limit - 1
+                  ? "border-b border-slate-100"
+                  : ""
+              }`}
+            >
+              <div className="flex items-start gap-4">
+                <div className="flex-1 min-w-0">
+                  {/* モードバッジと日時のSkeleton */}
+                  <div className="flex items-center gap-3 mb-2">
+                    <Skeleton className="h-5 w-12 rounded-full" />
+                    <Skeleton className="h-4 w-24" />
+                  </div>
+                  {/* 本文のSkeleton */}
+                  <Skeleton className="h-4 w-full mb-1" />
+                  <Skeleton className="h-4 w-3/4" />
+                </div>
+                {/* アクションボタンのSkeleton（ゴミ箱ビューでない場合） */}
+                {view !== "trash" && (
+                  <div className="flex items-center gap-1 shrink-0">
+                    <Skeleton className="h-8 w-8 rounded" />
+                    <Skeleton className="h-8 w-8 rounded" />
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
-      {posts && posts.length > 0 && (
+      {/* データ取得完了後、投稿がある場合は実データを表示 */}
+      {!isLoading && posts && posts.length > 0 && (
         <div className="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm">
           {posts.map((post, index) => (
             <PostItem
               key={post.postId}
               post={post}
-              isLast={index === posts.length - 1}
+              isLast={index === posts.length - 1 && !isFetchingNextPage}
               view={view}
               onEdit={handleEdit}
               onDelete={handleDelete}
             />
           ))}
+          {/* 追加フェッチ中は末尾にSkeletonを表示 */}
+          {isFetchingNextPage &&
+            skeletonKeys.map((key, index) => (
+              <div
+                key={`next-${key}`}
+                className={`p-4 ${
+                  index < findManyOptions.limit - 1
+                    ? "border-b border-slate-100"
+                    : ""
+                }`}
+              >
+                <div className="flex items-start gap-4">
+                  <div className="flex-1 min-w-0">
+                    {/* モードバッジと日時のSkeleton */}
+                    <div className="flex items-center gap-3 mb-2">
+                      <Skeleton className="h-5 w-12 rounded-full" />
+                      <Skeleton className="h-4 w-24" />
+                    </div>
+                    {/* 本文のSkeleton */}
+                    <Skeleton className="h-4 w-full mb-1" />
+                    <Skeleton className="h-4 w-3/4" />
+                  </div>
+                  {/* アクションボタンのSkeleton（ゴミ箱ビューでない場合） */}
+                  {view !== "trash" && (
+                    <div className="flex items-center gap-1 shrink-0">
+                      <Skeleton className="h-8 w-8 rounded" />
+                      <Skeleton className="h-8 w-8 rounded" />
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          {/* 無限スクロール用のトリガー要素 */}
+          {hasNextPage && !isFetchingNextPage && (
+            <div ref={loadMoreRef} className="h-1" aria-hidden="true" />
+          )}
+          {/* 全件取得完了メッセージ */}
+          {!hasNextPage && posts.length > 0 && (
+            <div className="p-4 text-center text-sm text-slate-500">
+              すべての投稿を取得しました
+            </div>
+          )}
         </div>
       )}
 
-      {posts && posts.length === 0 && !isLoading && (
+      {/* データ取得完了後、投稿がない場合の空メッセージ */}
+      {!isLoading && posts && posts.length === 0 && (
         <div className="rounded-xl border border-slate-200 bg-white p-12 text-center">
           <p className="text-slate-500 text-sm">
             {view === "trash" ? "ごみ箱は空です" : "投稿がありません"}

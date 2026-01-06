@@ -4,6 +4,16 @@ import userEvent from "@testing-library/user-event";
 import { PostList } from "@/components/timeline/PostList";
 import type { PostDTO } from "@/lib/postRepository";
 
+// IntersectionObserverをモック
+global.IntersectionObserver = class IntersectionObserver {
+  disconnect() {}
+  observe() {}
+  takeRecords() {
+    return [];
+  }
+  unobserve() {}
+} as unknown as typeof IntersectionObserver;
+
 // postRepositoryをモック
 jest.mock("@/lib/postRepository", () => ({
   postRepository: {
@@ -56,19 +66,22 @@ describe("PostList", () => {
     );
   };
 
-  it("ローディング中はスピナー表示・投稿非表示", async () => {
+  it("ローディング中はSkeleton表示・投稿非表示", async () => {
     mockPostRepository.findMany.mockImplementation(
       () =>
-        new Promise<PostDTO[]>((resolve) => {
+        new Promise((resolve) => {
           // 意図的に遅延させてローディング状態を確認
-          setTimeout(() => resolve([]), 100);
+          setTimeout(() => resolve({ posts: [], nextCursor: undefined }), 100);
         }),
     );
 
-    renderWithQueryClient(<PostList authorId={TEST_AUTHOR_ID} />);
+    const { container } = renderWithQueryClient(
+      <PostList authorId={TEST_AUTHOR_ID} />,
+    );
 
-    // ローディング中はスピナーが表示される
-    expect(screen.getByRole("status", { name: "Loading" })).toBeInTheDocument();
+    // ローディング中はSkeletonが表示される（data-slot="skeleton"を持つ要素を確認）
+    const skeletons = container.querySelectorAll('[data-slot="skeleton"]');
+    expect(skeletons.length).toBeGreaterThan(0);
 
     // 投稿はまだ表示されない
     expect(screen.queryByTestId("post-item")).not.toBeInTheDocument();
@@ -98,9 +111,14 @@ describe("PostList", () => {
       deletedAt: null,
     }));
 
-    mockPostRepository.findMany.mockResolvedValue(mockPosts);
+    mockPostRepository.findMany.mockResolvedValue({
+      posts: mockPosts,
+      nextCursor: undefined,
+    });
 
-    renderWithQueryClient(<PostList authorId={TEST_AUTHOR_ID} />);
+    const { container } = renderWithQueryClient(
+      <PostList authorId={TEST_AUTHOR_ID} />,
+    );
 
     await waitFor(() => {
       expect(mockPostRepository.findMany).toHaveBeenCalledWith({
@@ -109,6 +127,7 @@ describe("PostList", () => {
         sortBy: "updatedAt",
         sortOrder: "desc",
         status: "active",
+        cursor: undefined,
       });
     });
 
@@ -121,15 +140,11 @@ describe("PostList", () => {
       expect(postItems).toHaveLength(10);
     });
 
-    // スピナーは非表示になる（フェードアウトを考慮して少し待つ）
-    await waitFor(
-      () => {
-        expect(
-          screen.queryByRole("status", { name: "Loading" }),
-        ).not.toBeInTheDocument();
-      },
-      { timeout: 2000 },
-    );
+    // Skeletonは非表示になる
+    await waitFor(() => {
+      const skeletons = container.querySelectorAll('[data-slot="skeleton"]');
+      expect(skeletons.length).toBe(0);
+    });
   });
 
   it("ゴミ箱ボタンクリックでpostRepository.softDeleteが呼ばれ、キャッシュが無効化される", async () => {
@@ -155,7 +170,10 @@ describe("PostList", () => {
       },
     ];
 
-    mockPostRepository.findMany.mockResolvedValue(mockPosts);
+    mockPostRepository.findMany.mockResolvedValue({
+      posts: mockPosts,
+      nextCursor: undefined,
+    });
     mockPostRepository.softDelete.mockResolvedValue(undefined);
 
     renderWithQueryClient(<PostList authorId={TEST_AUTHOR_ID} />);
@@ -200,7 +218,10 @@ describe("PostList", () => {
       deletedAt: null,
     }));
 
-    mockPostRepository.findMany.mockResolvedValue(mockPosts);
+    mockPostRepository.findMany.mockResolvedValue({
+      posts: mockPosts,
+      nextCursor: undefined,
+    });
 
     renderWithQueryClient(<PostList authorId={TEST_AUTHOR_ID} mode="memo" />);
 
@@ -212,6 +233,7 @@ describe("PostList", () => {
         sortOrder: "desc",
         mode: "memo",
         status: "active",
+        cursor: undefined,
       });
     });
 
@@ -239,7 +261,10 @@ describe("PostList", () => {
       deletedAt: new Date(2025, 0, 1 + i),
     }));
 
-    mockPostRepository.findMany.mockResolvedValue(mockPosts);
+    mockPostRepository.findMany.mockResolvedValue({
+      posts: mockPosts,
+      nextCursor: undefined,
+    });
 
     renderWithQueryClient(<PostList authorId={TEST_AUTHOR_ID} view="trash" />);
 
@@ -250,6 +275,7 @@ describe("PostList", () => {
         sortBy: "updatedAt",
         sortOrder: "desc",
         status: "trashed",
+        cursor: undefined,
       });
     });
 
