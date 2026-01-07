@@ -30,6 +30,31 @@ interface PostListProps {
 }
 
 /**
+ * InfiniteDataから指定されたpostIdの投稿を削除するヘルパー関数
+ * @param data - 更新対象のInfiniteData
+ * @param deletedPostId - 削除する投稿のID
+ * @returns 更新後のInfiniteData（変更がない場合は元のデータを返す）
+ */
+function removePostFromInfiniteData(
+  data: InfiniteData<FindManyResult> | undefined,
+  deletedPostId: string,
+): InfiniteData<FindManyResult> | undefined {
+  if (!data) return data;
+
+  let changed = false;
+  const pages = data.pages.map((page) => {
+    const filtered = page.posts.filter((post) => post.postId !== deletedPostId);
+    if (filtered.length !== page.posts.length) {
+      changed = true;
+      return { ...page, posts: filtered };
+    }
+    return page;
+  });
+
+  return changed ? { ...data, pages } : data;
+}
+
+/**
  * PostList
  * 投稿一覧を表示するコンポーネント
  * TanStack Queryでデータ取得・キャッシュ管理を行う
@@ -133,12 +158,21 @@ export function PostList({
     mutationFn: async (postId: string) => {
       await postRepository.softDelete(postId);
     },
-    onSuccess: () => {
-      // 同一ユーザーの投稿一覧キャッシュ（mode/view/tags問わず）を無効化
-      queryClient.invalidateQueries({
-        predicate: (query) =>
-          isPostsQueryKeyForAuthor(query.queryKey, authorId),
-      });
+    onSuccess: (_data, deletedPostId) => {
+      // 同一ユーザーの投稿一覧キャッシュ（mode/view/tags問わず）から該当投稿を削除
+      // クエリ無効化による全再取得は行わず、スクロール済みページ数を保持
+      queryClient
+        .getQueryCache()
+        .findAll({
+          predicate: (query) =>
+            isPostsQueryKeyForAuthor(query.queryKey, authorId),
+        })
+        .forEach((query) => {
+          queryClient.setQueryData<InfiniteData<FindManyResult>>(
+            query.queryKey,
+            (old) => removePostFromInfiniteData(old, deletedPostId),
+          );
+        });
       toast.success("ごみ箱に移動しました");
     },
     onError: (error) => {

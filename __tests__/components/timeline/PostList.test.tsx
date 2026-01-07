@@ -147,7 +147,7 @@ describe("PostList", () => {
     });
   });
 
-  it("ゴミ箱ボタンクリックでpostRepository.softDeleteが呼ばれ、関連するキャッシュが無効化される", async () => {
+  it("ゴミ箱ボタンクリックでpostRepository.softDeleteが呼ばれ、キャッシュから該当投稿が削除される", async () => {
     const user = userEvent.setup();
     const mockPosts: PostDTO[] = [
       {
@@ -168,6 +168,24 @@ describe("PostList", () => {
         updatedAt: new Date(2025, 0, 1),
         deletedAt: null,
       },
+      {
+        postId: "post-2",
+        authorId: TEST_AUTHOR_ID,
+        contentJSON: JSON.stringify({
+          type: "doc",
+          content: [
+            {
+              type: "paragraph",
+              content: [{ type: "text", text: "テスト投稿2" }],
+            },
+          ],
+        }),
+        status: "active",
+        mode: "todo",
+        createdAt: new Date(2025, 0, 2),
+        updatedAt: new Date(2025, 0, 2),
+        deletedAt: null,
+      },
     ];
 
     mockPostRepository.findMany.mockResolvedValue({
@@ -175,38 +193,58 @@ describe("PostList", () => {
       nextCursor: undefined,
     });
     mockPostRepository.softDelete.mockResolvedValue(undefined);
-    const invalidateSpy = jest.spyOn(queryClient, "invalidateQueries");
+    const setQueryDataSpy = jest.spyOn(queryClient, "setQueryData");
 
     renderWithQueryClient(<PostList authorId={TEST_AUTHOR_ID} />);
 
     // 投稿が表示されるまで待つ
     await waitFor(() => {
-      expect(screen.getByTestId("post-item")).toBeInTheDocument();
+      expect(screen.getAllByTestId("post-item")).toHaveLength(2);
     });
 
-    // ゴミ箱ボタンをクリック
-    const deleteButton = screen.getByRole("button", { name: "ごみ箱へ移動" });
-    await user.click(deleteButton);
+    // ゴミ箱ボタンをクリック（最初の投稿のボタン）
+    const deleteButtons = screen.getAllByRole("button", {
+      name: "ごみ箱へ移動",
+    });
+    await user.click(deleteButtons[0]);
 
     // softDeleteが呼ばれる
     await waitFor(() => {
       expect(mockPostRepository.softDelete).toHaveBeenCalledWith("post-1");
     });
 
-    // invalidateQueriesが呼ばれ、predicateでauthorIdマッチのクエリのみ対象となる
-    expect(invalidateSpy).toHaveBeenCalled();
-    const args = invalidateSpy.mock.calls[0][0];
-    expect(args?.predicate).toBeInstanceOf(Function);
-    const predicate = args?.predicate as (query: {
-      queryKey: unknown;
-    }) => boolean;
-    expect(
-      predicate({ queryKey: ["posts", { authorId: TEST_AUTHOR_ID }] }),
-    ).toBe(true);
-    expect(predicate({ queryKey: ["posts", { authorId: "other-user" }] })).toBe(
-      false,
-    );
-    invalidateSpy.mockRestore();
+    // setQueryDataが呼ばれ、キャッシュから該当投稿が削除される
+    await waitFor(() => {
+      expect(setQueryDataSpy).toHaveBeenCalled();
+    });
+
+    // setQueryDataの呼び出しを確認
+    const setQueryDataCalls = setQueryDataSpy.mock.calls;
+    expect(setQueryDataCalls.length).toBeGreaterThan(0);
+
+    // キャッシュから該当投稿が削除されていることを確認
+    // setQueryDataの第2引数（updater関数）を実行して結果を確認
+    const firstCall = setQueryDataCalls[0];
+    const updater = firstCall[1] as (
+      old: { pages: Array<{ posts: PostDTO[] }> } | undefined,
+    ) => { pages: Array<{ posts: PostDTO[] }> } | undefined;
+
+    // 元のキャッシュデータをシミュレート
+    const oldData = {
+      pages: [
+        {
+          posts: mockPosts,
+          nextCursor: undefined,
+        },
+      ],
+    };
+
+    const newData = updater(oldData);
+    expect(newData).toBeDefined();
+    expect(newData?.pages[0].posts).toHaveLength(1);
+    expect(newData?.pages[0].posts[0].postId).toBe("post-2");
+
+    setQueryDataSpy.mockRestore();
   });
 
   it("通常一覧でごみ箱に移動した投稿が、view=trashに切り替えると表示される", async () => {
