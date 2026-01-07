@@ -14,6 +14,7 @@ import {
   type PostMode,
   postRepository,
 } from "@/lib/postRepository";
+import { isPostsQueryKeyForAuthor } from "@/lib/postsQueryKey";
 
 interface PostEditorProps {
   authorId: string;
@@ -111,8 +112,11 @@ export function PostEditor({
       }
 
       // 一覧のキャッシュを無効化して再取得
+      // authorIdが一致するpostsクエリをまとめて無効化（mode/viewが異なるものも含む）
       queryClient.invalidateQueries({
-        queryKey: ["posts", { authorId }],
+        queryKey: ["posts"],
+        predicate: (query) =>
+          isPostsQueryKeyForAuthor(query.queryKey, authorId),
       });
     } catch (error) {
       console.warn("保存エラー:", error);
@@ -123,6 +127,13 @@ export function PostEditor({
   };
 
   const handleCancel = () => {
+    if (editor) {
+      // エディタの内容をクリア
+      editor.commands.clearContent();
+      // フォーカスを戻す
+      editor.commands.focus("end");
+    }
+    // 編集モードを終了（mode stateは変更しない）
     onFinishEdit?.();
   };
 

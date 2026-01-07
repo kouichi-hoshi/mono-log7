@@ -3,6 +3,7 @@ import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { PostEditor } from "@/components/timeline/PostEditor";
 import type { PostDTO } from "@/lib/postRepository";
+import { createPostsQueryKey } from "@/lib/postsQueryKey";
 
 // postRepositoryをモック
 jest.mock("@/lib/postRepository", () => ({
@@ -384,6 +385,119 @@ describe("PostEditor", () => {
     expect(onFinishEdit).toHaveBeenCalled();
   });
 
+  it("更新成功時にauthorIdが一致するpostsクエリが無効化される", async () => {
+    const user = userEvent.setup();
+    const editingPost: PostDTO = {
+      postId: "edit-post-1",
+      authorId: TEST_AUTHOR_ID,
+      contentJSON:
+        '{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"編集する投稿"}]}]}',
+      status: "active",
+      mode: "memo",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      deletedAt: null,
+    };
+
+    const updatedPost: PostDTO = {
+      ...editingPost,
+      contentJSON:
+        '{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"更新された投稿"}]}]}',
+      updatedAt: new Date(),
+    };
+
+    mockPostRepository.update.mockResolvedValue(updatedPost);
+    (mockEditor.getText as jest.Mock).mockReturnValue("更新された投稿");
+    (mockEditor.getJSON as jest.Mock).mockReturnValue({
+      type: "doc",
+      content: [
+        {
+          type: "paragraph",
+          content: [{ type: "text", text: "更新された投稿" }],
+        },
+      ],
+    });
+
+    // 異なるauthorIdのクエリも登録して、それらが無効化されないことを確認
+    queryClient.setQueryData(
+      createPostsQueryKey({ authorId: "other-user", mode: "all" }),
+      { posts: [], nextCursor: undefined },
+    );
+    queryClient.setQueryData(
+      createPostsQueryKey({ authorId: TEST_AUTHOR_ID, mode: "all" }),
+      { posts: [], nextCursor: undefined },
+    );
+    queryClient.setQueryData(
+      createPostsQueryKey({ authorId: TEST_AUTHOR_ID, mode: "memo" }),
+      { posts: [], nextCursor: undefined },
+    );
+
+    // queryClientのinvalidateQueriesをspyで監視（render前に設定）
+    const invalidateSpy = jest.spyOn(queryClient, "invalidateQueries");
+
+    const onFinishEdit = jest.fn();
+
+    renderWithQueryClient(
+      <PostEditor
+        authorId={TEST_AUTHOR_ID}
+        editingPost={editingPost}
+        onFinishEdit={onFinishEdit}
+      />,
+    );
+
+    await waitFor(() => {
+      const editor = document.querySelector(".ProseMirror");
+      expect(editor).toBeInTheDocument();
+    });
+
+    const updateButton = screen.getByRole("button", { name: "更新" });
+    await user.click(updateButton);
+
+    await waitFor(() => {
+      expect(mockPostRepository.update).toHaveBeenCalled();
+    });
+
+    // invalidateQueriesが呼ばれることを確認
+    await waitFor(() => {
+      expect(invalidateSpy).toHaveBeenCalled();
+    });
+
+    // authorIdが一致するpostsクエリが無効化される
+    expect(invalidateSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        queryKey: ["posts"],
+        predicate: expect.any(Function),
+      }),
+    );
+
+    // predicateが正しく動作することを確認
+    const lastCall =
+      invalidateSpy.mock.calls[invalidateSpy.mock.calls.length - 1];
+    const predicate = lastCall[0]?.predicate;
+    if (predicate) {
+      // TEST_AUTHOR_IDのクエリは無効化される
+      expect(
+        predicate({
+          queryKey: createPostsQueryKey({
+            authorId: TEST_AUTHOR_ID,
+            mode: "all",
+          }),
+        } as { queryKey: readonly unknown[] }),
+      ).toBe(true);
+      // 他のauthorIdのクエリは無効化されない
+      expect(
+        predicate({
+          queryKey: createPostsQueryKey({
+            authorId: "other-user",
+            mode: "all",
+          }),
+        } as { queryKey: readonly unknown[] }),
+      ).toBe(false);
+    }
+
+    invalidateSpy.mockRestore();
+  });
+
   it("編集モードでキャンセルボタンをクリックするとonFinishEditが呼ばれる", async () => {
     const user = userEvent.setup();
     const editingPost: PostDTO = {
@@ -416,6 +530,46 @@ describe("PostEditor", () => {
     const cancelButton = screen.getByRole("button", { name: "キャンセル" });
     await user.click(cancelButton);
 
+    // onFinishEditが呼ばれる
+    expect(onFinishEdit).toHaveBeenCalled();
+  });
+
+  it("編集モードでキャンセルボタンをクリックするとエディタがクリアされ、フォーカスが戻る（P1-EDIT-07）", async () => {
+    const user = userEvent.setup();
+    const editingPost: PostDTO = {
+      postId: "edit-post-1",
+      authorId: TEST_AUTHOR_ID,
+      contentJSON:
+        '{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"編集する投稿"}]}]}',
+      status: "active",
+      mode: "memo",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      deletedAt: null,
+    };
+
+    const onFinishEdit = jest.fn();
+
+    renderWithQueryClient(
+      <PostEditor
+        authorId={TEST_AUTHOR_ID}
+        editingPost={editingPost}
+        onFinishEdit={onFinishEdit}
+      />,
+    );
+
+    await waitFor(() => {
+      const editor = document.querySelector(".ProseMirror");
+      expect(editor).toBeInTheDocument();
+    });
+
+    const cancelButton = screen.getByRole("button", { name: "キャンセル" });
+    await user.click(cancelButton);
+
+    // エディタがクリアされる
+    expect(mockEditor.commands.clearContent).toHaveBeenCalled();
+    // フォーカスが戻る
+    expect(mockEditor.commands.focus).toHaveBeenCalledWith("end");
     // onFinishEditが呼ばれる
     expect(onFinishEdit).toHaveBeenCalled();
   });

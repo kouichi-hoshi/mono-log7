@@ -16,6 +16,7 @@ import {
   type PostMode,
   postRepository,
 } from "@/lib/postRepository";
+import { createPostsQueryKey } from "@/lib/postsQueryKey";
 import { PostItem } from "./PostItem";
 
 interface PostListProps {
@@ -39,14 +40,11 @@ export function PostList({
   const queryClient = useQueryClient();
 
   // クエリキーに mode と view を含める
-  const queryKey = [
-    "posts",
-    {
-      authorId,
-      mode,
-      view,
-    },
-  ] as const;
+  const queryKey = createPostsQueryKey({
+    authorId,
+    mode,
+    view,
+  });
 
   // フィルタリング条件を構築
   const findManyOptions = {
