@@ -123,7 +123,7 @@ export function UiPlayground() {
           </Button>
         </div>
         <p className="text-xs text-slate-500">
-          sonner を使用した通知実装。画面上部中央に表示されます。
+          sonner を使用した通知実装。画面下部中央に表示されます。
         </p>
       </section>
 

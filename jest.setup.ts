@@ -14,3 +14,15 @@ Object.defineProperty(window, "matchMedia", {
     dispatchEvent: jest.fn(),
   })),
 });
+
+// JSDOM では Pointer Events の一部APIが未実装なため、sonner が利用する
+// setPointerCapture / releasePointerCapture を最低限ポリフィルする。
+// （トーストのスワイプdismiss内部で呼ばれる）
+if (!("setPointerCapture" in HTMLElement.prototype)) {
+  // biome-ignore lint/suspicious/noExplicitAny: テスト環境のポリフィルのため
+  (HTMLElement.prototype as any).setPointerCapture = () => {};
+}
+if (!("releasePointerCapture" in HTMLElement.prototype)) {
+  // biome-ignore lint/suspicious/noExplicitAny: テスト環境のポリフィルのため
+  (HTMLElement.prototype as any).releasePointerCapture = () => {};
+}
