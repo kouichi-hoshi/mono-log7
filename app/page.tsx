@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { AuthenticatedLanding } from "@/components/landing/AuthenticatedLanding";
 import { UnauthenticatedLanding } from "@/components/landing/UnauthenticatedLanding";
+import { normalizeHomeSearchParams } from "@/lib/routing/normalizeHomeSearchParams";
 import { getSession } from "@/lib/session";
 
 export const metadata: Metadata = {
@@ -9,10 +11,7 @@ export const metadata: Metadata = {
 };
 
 interface HomeProps {
-  searchParams: Promise<{
-    mode?: string;
-    view?: string;
-  }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
 export default async function Home({ searchParams }: HomeProps) {
@@ -20,12 +19,22 @@ export default async function Home({ searchParams }: HomeProps) {
   const params = await searchParams;
 
   if (session) {
+    // ログイン中はsearchParamsを正規化し、変更があればredirect
+    const { normalized, changed } = normalizeHomeSearchParams(params);
+
+    if (changed) {
+      // 正規化されたURLにリダイレクト
+      const canonicalUrl = `/?${normalized.toString()}`;
+      redirect(canonicalUrl);
+    }
+
+    // 正規化済みのsearchParamsをAuthenticatedLandingに渡す
     return (
       <AuthenticatedLanding
         session={session}
         searchParams={{
-          mode: params.mode || "all",
-          view: params.view,
+          mode: normalized.get("mode") || "all",
+          view: normalized.get("view") || undefined,
         }}
       />
     );

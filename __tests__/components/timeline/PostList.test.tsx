@@ -147,7 +147,7 @@ describe("PostList", () => {
     });
   });
 
-  it("ゴミ箱ボタンクリックでpostRepository.softDeleteが呼ばれ、キャッシュが無効化される", async () => {
+  it("ゴミ箱ボタンクリックでpostRepository.softDeleteが呼ばれ、関連するキャッシュが無効化される", async () => {
     const user = userEvent.setup();
     const mockPosts: PostDTO[] = [
       {
@@ -175,6 +175,7 @@ describe("PostList", () => {
       nextCursor: undefined,
     });
     mockPostRepository.softDelete.mockResolvedValue(undefined);
+    const invalidateSpy = jest.spyOn(queryClient, "invalidateQueries");
 
     renderWithQueryClient(<PostList authorId={TEST_AUTHOR_ID} />);
 
@@ -192,9 +193,86 @@ describe("PostList", () => {
       expect(mockPostRepository.softDelete).toHaveBeenCalledWith("post-1");
     });
 
-    // invalidateQueriesにより再取得が走る
+    // invalidateQueriesが呼ばれ、predicateでauthorIdマッチのクエリのみ対象となる
+    expect(invalidateSpy).toHaveBeenCalled();
+    const args = invalidateSpy.mock.calls[0][0];
+    expect(args?.predicate).toBeInstanceOf(Function);
+    const predicate = args?.predicate as (query: {
+      queryKey: unknown;
+    }) => boolean;
+    expect(
+      predicate({ queryKey: ["posts", { authorId: TEST_AUTHOR_ID }] }),
+    ).toBe(true);
+    expect(predicate({ queryKey: ["posts", { authorId: "other-user" }] })).toBe(
+      false,
+    );
+    invalidateSpy.mockRestore();
+  });
+
+  it("通常一覧でごみ箱に移動した投稿が、view=trashに切り替えると表示される", async () => {
+    const user = userEvent.setup();
+    const activePost: PostDTO = {
+      postId: "post-1",
+      authorId: TEST_AUTHOR_ID,
+      contentJSON: JSON.stringify({
+        type: "doc",
+        content: [
+          { type: "paragraph", content: [{ type: "text", text: "ToDo本文" }] },
+        ],
+      }),
+      status: "active",
+      mode: "todo",
+      createdAt: new Date(2025, 0, 2),
+      updatedAt: new Date(2025, 0, 2),
+      deletedAt: null,
+    };
+    const trashedPost: PostDTO = {
+      ...activePost,
+      status: "trashed",
+      deletedAt: new Date(2025, 0, 3),
+    };
+
+    mockPostRepository.findMany.mockImplementation(async (options) => {
+      if (options?.status === "trashed") {
+        return {
+          posts: [trashedPost],
+          nextCursor: undefined,
+        };
+      }
+      return {
+        posts: [activePost],
+        nextCursor: undefined,
+      };
+    });
+    mockPostRepository.softDelete.mockResolvedValue(undefined);
+
+    const { rerender } = renderWithQueryClient(
+      <PostList authorId={TEST_AUTHOR_ID} mode="all" view={undefined} />,
+    );
+
     await waitFor(() => {
-      expect(mockPostRepository.findMany).toHaveBeenCalledTimes(2);
+      expect(screen.getByTestId("post-item")).toBeInTheDocument();
+    });
+
+    const deleteButton = screen.getByRole("button", { name: "ごみ箱へ移動" });
+    await user.click(deleteButton);
+
+    await waitFor(() => {
+      expect(mockPostRepository.softDelete).toHaveBeenCalledWith("post-1");
+    });
+
+    rerender(
+      <QueryClientProvider client={queryClient}>
+        <PostList authorId={TEST_AUTHOR_ID} mode="all" view="trash" />
+      </QueryClientProvider>,
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("heading", { name: "ごみ箱" }),
+      ).toBeInTheDocument();
+      expect(screen.getByTestId("post-item")).toBeInTheDocument();
+      expect(screen.getByText("ToDo本文")).toBeInTheDocument();
     });
   });
 
@@ -281,6 +359,105 @@ describe("PostList", () => {
 
     // モードタイトルが"ごみ箱"になる
     expect(screen.getByRole("heading", { name: "ごみ箱" })).toBeInTheDocument();
+  });
+
+  it("view=trashではmodeが指定されていても無視してtrashedのみ取得する", async () => {
+    const mockPosts: PostDTO[] = [
+      {
+        postId: "post-trashed",
+        authorId: TEST_AUTHOR_ID,
+        contentJSON: JSON.stringify({
+          type: "doc",
+          content: [
+            {
+              type: "paragraph",
+              content: [{ type: "text", text: "削除済みToDo" }],
+            },
+          ],
+        }),
+        status: "trashed",
+        mode: "memo",
+        createdAt: new Date(2025, 0, 1),
+        updatedAt: new Date(2025, 0, 2),
+        deletedAt: new Date(2025, 0, 3),
+      },
+    ];
+
+    mockPostRepository.findMany.mockResolvedValue({
+      posts: mockPosts,
+      nextCursor: undefined,
+    });
+
+    renderWithQueryClient(
+      <PostList authorId={TEST_AUTHOR_ID} mode="todo" view="trash" />,
+    );
+
+    await waitFor(() => {
+      expect(mockPostRepository.findMany).toHaveBeenCalledWith({
+        authorId: TEST_AUTHOR_ID,
+        limit: 10,
+        sortBy: "updatedAt",
+        sortOrder: "desc",
+        status: "trashed",
+        cursor: undefined,
+      });
+    });
+
+    expect(screen.getByRole("heading", { name: "ごみ箱" })).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByTestId("post-item")).toBeInTheDocument();
+    });
+  });
+
+  it("view=trashではmodeを変えても同一queryKeyのため再フェッチしない（キャッシュ分裂しない）", async () => {
+    const mockPosts: PostDTO[] = [
+      {
+        postId: "post-trashed",
+        authorId: TEST_AUTHOR_ID,
+        contentJSON: JSON.stringify({
+          type: "doc",
+          content: [
+            {
+              type: "paragraph",
+              content: [{ type: "text", text: "削除済み投稿" }],
+            },
+          ],
+        }),
+        status: "trashed",
+        mode: "memo",
+        createdAt: new Date(2025, 0, 1),
+        updatedAt: new Date(2025, 0, 2),
+        deletedAt: new Date(2025, 0, 3),
+      },
+    ];
+
+    mockPostRepository.findMany.mockResolvedValue({
+      posts: mockPosts,
+      nextCursor: undefined,
+    });
+
+    const { rerender } = renderWithQueryClient(
+      <PostList authorId={TEST_AUTHOR_ID} mode="memo" view="trash" />,
+    );
+
+    await waitFor(() => {
+      expect(mockPostRepository.findMany).toHaveBeenCalledTimes(1);
+      expect(
+        screen.getByRole("heading", { name: "ごみ箱" }),
+      ).toBeInTheDocument();
+    });
+
+    // modeだけ変更（view=trashは維持）: queryKeyが同一なら再フェッチ不要
+    rerender(
+      <QueryClientProvider client={queryClient}>
+        <PostList authorId={TEST_AUTHOR_ID} mode="todo" view="trash" />
+      </QueryClientProvider>,
+    );
+
+    // 少し待っても追加呼び出しが発生しないこと
+    await waitFor(() => {
+      expect(mockPostRepository.findMany).toHaveBeenCalledTimes(1);
+    });
   });
 
   it("エラー時にエラーメッセージを表示し、再試行ボタンがrenderされる", async () => {

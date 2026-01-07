@@ -16,7 +16,10 @@ import {
   type PostMode,
   postRepository,
 } from "@/lib/postRepository";
-import { createPostsQueryKey } from "@/lib/postsQueryKey";
+import {
+  createPostsQueryKey,
+  isPostsQueryKeyForAuthor,
+} from "@/lib/postsQueryKey";
 import { PostItem } from "./PostItem";
 
 interface PostListProps {
@@ -39,12 +42,14 @@ export function PostList({
 }: PostListProps) {
   const queryClient = useQueryClient();
 
-  // クエリキーに mode と view を含める
-  const queryKey = createPostsQueryKey({
-    authorId,
-    mode,
-    view,
-  });
+  const isTrashView = view === "trash";
+
+  // クエリキー:
+  // - 通常一覧は mode を含める
+  // - ゴミ箱(view=trash)は mode に依存しないため、mode をキーから外してキャッシュ分裂を防ぐ
+  const queryKey = createPostsQueryKey(
+    isTrashView ? { authorId, view: "trash" } : { authorId, mode },
+  );
 
   // フィルタリング条件を構築
   const findManyOptions = {
@@ -52,9 +57,9 @@ export function PostList({
     limit: 10,
     sortBy: "updatedAt" as const,
     sortOrder: "desc" as const,
-    ...(mode !== "all" && { mode }),
-    ...(view === "trash" && { status: "trashed" as const }),
-    ...(view !== "trash" && { status: "active" as const }),
+    ...(mode !== "all" && !isTrashView && { mode }),
+    ...(isTrashView && { status: "trashed" as const }),
+    ...(!isTrashView && { status: "active" as const }),
   };
 
   const {
@@ -129,9 +134,10 @@ export function PostList({
       await postRepository.softDelete(postId);
     },
     onSuccess: () => {
-      // キャッシュを無効化して再取得
+      // 同一ユーザーの投稿一覧キャッシュ（mode/view/tags問わず）を無効化
       queryClient.invalidateQueries({
-        queryKey,
+        predicate: (query) =>
+          isPostsQueryKeyForAuthor(query.queryKey, authorId),
       });
       toast.success("ごみ箱に移動しました");
     },
@@ -171,16 +177,15 @@ export function PostList({
   }
 
   // モードタイトルを決定
-  const modeTitle =
-    view === "trash"
-      ? "ごみ箱"
-      : mode === "memo"
-        ? "メモ"
-        : mode === "todo"
-          ? "ToDo"
-          : mode === "diary"
-            ? "日記"
-            : "すべて";
+  const modeTitle = isTrashView
+    ? "ごみ箱"
+    : mode === "memo"
+      ? "メモ"
+      : mode === "todo"
+        ? "ToDo"
+        : mode === "diary"
+          ? "日記"
+          : "すべて";
 
   return (
     <div>
