@@ -141,6 +141,125 @@ describe("AuthenticatedLanding", () => {
     expect(trashLink).toBeInTheDocument();
   });
 
+  it("searchParams.modeがPostListに正しく渡される（P1-FLT-01）", async () => {
+    renderWithProviders(
+      <AuthenticatedLanding
+        session={mockSession}
+        searchParams={{ mode: "memo" }}
+      />,
+    );
+
+    // PostListがレンダリングされるまで待つ
+    await waitFor(() => {
+      expect(mockPostRepository.findMany).toHaveBeenCalled();
+    });
+
+    // postRepository.findManyがmode=memoで呼ばれている
+    expect(mockPostRepository.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        mode: "memo",
+      }),
+    );
+  });
+
+  it("searchParams.mode=allのときPostListにmode=allが渡される（P1-FLT-01）", async () => {
+    renderWithProviders(
+      <AuthenticatedLanding
+        session={mockSession}
+        searchParams={{ mode: "all" }}
+      />,
+    );
+
+    // PostListがレンダリングされるまで待つ
+    await waitFor(() => {
+      expect(mockPostRepository.findMany).toHaveBeenCalled();
+    });
+
+    // mode=allのときはmodeパラメータが含まれない（すべて表示のため）
+    expect(mockPostRepository.findMany).toHaveBeenCalledWith(
+      expect.not.objectContaining({
+        mode: expect.anything(),
+      }),
+    );
+  });
+
+  it("searchParams.mode=todoのときPostListにmode=todoが渡される（P1-FLT-01）", async () => {
+    renderWithProviders(
+      <AuthenticatedLanding
+        session={mockSession}
+        searchParams={{ mode: "todo" }}
+      />,
+    );
+
+    // PostListがレンダリングされるまで待つ
+    await waitFor(() => {
+      expect(mockPostRepository.findMany).toHaveBeenCalled();
+    });
+
+    // postRepository.findManyがmode=todoで呼ばれている
+    expect(mockPostRepository.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        mode: "todo",
+      }),
+    );
+  });
+
+  it("searchParams.view=trashのときPostListにview=trashが渡される（P1-TRASH-01）", async () => {
+    renderWithProviders(
+      <AuthenticatedLanding
+        session={mockSession}
+        searchParams={{ view: "trash" }}
+      />,
+    );
+
+    // PostListがレンダリングされるまで待つ
+    await waitFor(() => {
+      expect(mockPostRepository.findMany).toHaveBeenCalled();
+    });
+
+    // postRepository.findManyがstatus=trashedで呼ばれている（view=trashのとき）
+    expect(mockPostRepository.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: "trashed",
+      }),
+    );
+
+    // modeパラメータが含まれていない（view=trashのときはmodeを無視）
+    expect(mockPostRepository.findMany).toHaveBeenCalledWith(
+      expect.not.objectContaining({
+        mode: expect.anything(),
+      }),
+    );
+  });
+
+  it("searchParams.view=trashとmodeが同時に指定されても、PostListはtrashedのみ取得する（P1-TRASH-01）", async () => {
+    renderWithProviders(
+      <AuthenticatedLanding
+        session={mockSession}
+        searchParams={{ view: "trash", mode: "memo" }}
+      />,
+    );
+
+    // PostListがレンダリングされるまで待つ
+    await waitFor(() => {
+      expect(mockPostRepository.findMany).toHaveBeenCalled();
+    });
+
+    // postRepository.findManyがstatus=trashedで呼ばれている
+    expect(mockPostRepository.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: "trashed",
+      }),
+    );
+
+    // modeパラメータが含まれていない（view=trashのときはmodeを無視）
+    expect(mockPostRepository.findMany).toHaveBeenCalledWith(
+      expect.not.objectContaining({
+        mode: expect.anything(),
+      }),
+    );
+  });
+
   it("一覧の編集ボタンクリックでエディタが編集状態になり、キャンセルで新規状態に戻りモードが維持される（P1-EDIT-06/07）", async () => {
     const user = userEvent.setup();
     const mockPost: PostDTO = {
