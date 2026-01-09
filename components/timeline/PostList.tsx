@@ -21,11 +21,14 @@ import {
   isPostsQueryKeyForAuthor,
 } from "@/lib/postsQueryKey";
 import { PostItem } from "./PostItem";
+import { PostSortControls } from "./PostSortControls";
 
 interface PostListProps {
   authorId: string;
   mode?: "all" | PostMode;
   view?: "trash";
+  sortBy?: "updatedAt" | "createdAt";
+  sortOrder?: "asc" | "desc";
   onEdit?: (post: PostDTO) => void;
 }
 
@@ -63,6 +66,8 @@ export function PostList({
   authorId,
   mode = "all",
   view,
+  sortBy = "updatedAt",
+  sortOrder = "desc",
   onEdit,
 }: PostListProps) {
   const queryClient = useQueryClient();
@@ -70,18 +75,21 @@ export function PostList({
   const isTrashView = view === "trash";
 
   // クエリキー:
-  // - 通常一覧は mode を含める
+  // - 通常一覧は mode, sortBy, sortOrder を含める
   // - ゴミ箱(view=trash)は mode に依存しないため、mode をキーから外してキャッシュ分裂を防ぐ
+  // - sortBy/sortOrderは常に含める（キャッシュを分離するため）
   const queryKey = createPostsQueryKey(
-    isTrashView ? { authorId, view: "trash" } : { authorId, mode },
+    isTrashView
+      ? { authorId, view: "trash", sortBy, sortOrder }
+      : { authorId, mode, sortBy, sortOrder },
   );
 
   // フィルタリング条件を構築
   const findManyOptions = {
     authorId,
     limit: 10,
-    sortBy: "updatedAt" as const,
-    sortOrder: "desc" as const,
+    sortBy: sortBy as "updatedAt" | "createdAt",
+    sortOrder: sortOrder as "asc" | "desc",
     ...(mode !== "all" && !isTrashView && { mode }),
     ...(isTrashView && { status: "trashed" as const }),
     ...(!isTrashView && { status: "active" as const }),
@@ -223,6 +231,9 @@ export function PostList({
 
   return (
     <div>
+      {/* ソートコントロール */}
+      <PostSortControls />
+
       {/* モードタイトル */}
       <div className="flex items-center justify-between mb-4 px-4 md:px-0">
         <h2 className="text-xl font-bold text-slate-900">{modeTitle}</h2>

@@ -35,6 +35,8 @@ export default async function Home({ searchParams }: HomeProps) {
         searchParams={{
           mode: normalized.get("mode") || "all",
           view: normalized.get("view") || undefined,
+          sortBy: normalized.get("sortBy") || "updatedAt",
+          sortOrder: normalized.get("sortOrder") || "desc",
         }}
       />
     );

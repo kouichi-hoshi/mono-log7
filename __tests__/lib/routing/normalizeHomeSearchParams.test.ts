@@ -15,32 +15,40 @@ describe("normalizeHomeSearchParams", () => {
     expect(result.changed).toBe(true);
   });
 
-  it("mode=allの場合、そのまま維持される", () => {
+  it("mode=allの場合、そのまま維持される（ただしsortBy/sortOrderが付与されるためchanged=true）", () => {
     const result = normalizeHomeSearchParams({ mode: "all" });
 
     expect(result.normalized.get("mode")).toBe("all");
-    expect(result.changed).toBe(false);
+    expect(result.normalized.get("sortBy")).toBe("updatedAt");
+    expect(result.normalized.get("sortOrder")).toBe("desc");
+    expect(result.changed).toBe(true); // sortBy/sortOrderが付与されるため
   });
 
-  it("mode=memoの場合、そのまま維持される", () => {
+  it("mode=memoの場合、そのまま維持される（ただしsortBy/sortOrderが付与されるためchanged=true）", () => {
     const result = normalizeHomeSearchParams({ mode: "memo" });
 
     expect(result.normalized.get("mode")).toBe("memo");
-    expect(result.changed).toBe(false);
+    expect(result.normalized.get("sortBy")).toBe("updatedAt");
+    expect(result.normalized.get("sortOrder")).toBe("desc");
+    expect(result.changed).toBe(true); // sortBy/sortOrderが付与されるため
   });
 
-  it("mode=todoの場合、そのまま維持される", () => {
+  it("mode=todoの場合、そのまま維持される（ただしsortBy/sortOrderが付与されるためchanged=true）", () => {
     const result = normalizeHomeSearchParams({ mode: "todo" });
 
     expect(result.normalized.get("mode")).toBe("todo");
-    expect(result.changed).toBe(false);
+    expect(result.normalized.get("sortBy")).toBe("updatedAt");
+    expect(result.normalized.get("sortOrder")).toBe("desc");
+    expect(result.changed).toBe(true); // sortBy/sortOrderが付与されるため
   });
 
-  it("mode=diaryの場合、そのまま維持される", () => {
+  it("mode=diaryの場合、そのまま維持される（ただしsortBy/sortOrderが付与されるためchanged=true）", () => {
     const result = normalizeHomeSearchParams({ mode: "diary" });
 
     expect(result.normalized.get("mode")).toBe("diary");
-    expect(result.changed).toBe(false);
+    expect(result.normalized.get("sortBy")).toBe("updatedAt");
+    expect(result.normalized.get("sortOrder")).toBe("desc");
+    expect(result.changed).toBe(true); // sortBy/sortOrderが付与されるため
   });
 
   it("view=trashの場合、そのまま維持される（ただしmode未指定のためchanged=true）", () => {
@@ -58,7 +66,7 @@ describe("normalizeHomeSearchParams", () => {
     expect(result.changed).toBe(true);
   });
 
-  it("modeとviewが両方正しい場合、両方維持される", () => {
+  it("modeとviewが両方正しい場合、両方維持される（ただしsortBy/sortOrderが付与されるためchanged=true）", () => {
     const result = normalizeHomeSearchParams({
       mode: "memo",
       view: "trash",
@@ -66,10 +74,12 @@ describe("normalizeHomeSearchParams", () => {
 
     expect(result.normalized.get("mode")).toBe("memo");
     expect(result.normalized.get("view")).toBe("trash");
-    expect(result.changed).toBe(false);
+    expect(result.normalized.get("sortBy")).toBe("updatedAt");
+    expect(result.normalized.get("sortOrder")).toBe("desc");
+    expect(result.changed).toBe(true); // sortBy/sortOrderが付与されるため
   });
 
-  it("未知のクエリパラメータ（tags）は保持される", () => {
+  it("未知のクエリパラメータ（tags）は保持される（ただしsortBy/sortOrderが付与されるためchanged=true）", () => {
     const result = normalizeHomeSearchParams({
       mode: "all",
       tags: "tag1,tag2",
@@ -77,10 +87,12 @@ describe("normalizeHomeSearchParams", () => {
 
     expect(result.normalized.get("mode")).toBe("all");
     expect(result.normalized.get("tags")).toBe("tag1,tag2");
-    expect(result.changed).toBe(false);
+    expect(result.normalized.get("sortBy")).toBe("updatedAt");
+    expect(result.normalized.get("sortOrder")).toBe("desc");
+    expect(result.changed).toBe(true); // sortBy/sortOrderが付与されるため
   });
 
-  it("未知のクエリパラメータ（errorTest）は保持される", () => {
+  it("未知のクエリパラメータ（errorTest）は保持される（ただしsortBy/sortOrderが付与されるためchanged=true）", () => {
     const result = normalizeHomeSearchParams({
       mode: "all",
       errorTest: "auth",
@@ -88,10 +100,12 @@ describe("normalizeHomeSearchParams", () => {
 
     expect(result.normalized.get("mode")).toBe("all");
     expect(result.normalized.get("errorTest")).toBe("auth");
-    expect(result.changed).toBe(false);
+    expect(result.normalized.get("sortBy")).toBe("updatedAt");
+    expect(result.normalized.get("sortOrder")).toBe("desc");
+    expect(result.changed).toBe(true); // sortBy/sortOrderが付与されるため
   });
 
-  it("複数の未知クエリパラメータが保持される", () => {
+  it("複数の未知クエリパラメータが保持される（ただしsortBy/sortOrderが付与されるためchanged=true）", () => {
     const result = normalizeHomeSearchParams({
       mode: "memo",
       tags: "tag1",
@@ -103,7 +117,9 @@ describe("normalizeHomeSearchParams", () => {
     expect(result.normalized.get("tags")).toBe("tag1");
     expect(result.normalized.get("errorTest")).toBe("server");
     expect(result.normalized.get("custom")).toBe("value");
-    expect(result.changed).toBe(false);
+    expect(result.normalized.get("sortBy")).toBe("updatedAt");
+    expect(result.normalized.get("sortOrder")).toBe("desc");
+    expect(result.changed).toBe(true); // sortBy/sortOrderが付与されるため
   });
 
   it("modeが配列の場合、最初の要素を使用し、重複除去のためchanged=trueになる", () => {
@@ -149,5 +165,92 @@ describe("normalizeHomeSearchParams", () => {
     expect(result.normalized.get("mode")).toBe("all");
     expect(result.normalized.get("view")).toBe("trash");
     expect(result.changed).toBe(true);
+  });
+
+  it("sortByが未指定の場合、sortBy=updatedAtが付与される", () => {
+    const result = normalizeHomeSearchParams({ mode: "all" });
+
+    expect(result.normalized.get("sortBy")).toBe("updatedAt");
+    expect(result.changed).toBe(true);
+  });
+
+  it("sortByが不正値の場合、sortBy=updatedAtに正規化される", () => {
+    const result = normalizeHomeSearchParams({ mode: "all", sortBy: "hoge" });
+
+    expect(result.normalized.get("sortBy")).toBe("updatedAt");
+    expect(result.changed).toBe(true);
+  });
+
+  it("sortBy=updatedAtの場合、そのまま維持される（ただしsortOrderが付与されるためchanged=true）", () => {
+    const result = normalizeHomeSearchParams({
+      mode: "all",
+      sortBy: "updatedAt",
+    });
+
+    expect(result.normalized.get("sortBy")).toBe("updatedAt");
+    expect(result.normalized.get("sortOrder")).toBe("desc");
+    expect(result.changed).toBe(true); // sortOrderが付与されるため
+  });
+
+  it("sortBy=createdAtの場合、そのまま維持される（ただしsortOrderが付与されるためchanged=true）", () => {
+    const result = normalizeHomeSearchParams({
+      mode: "all",
+      sortBy: "createdAt",
+    });
+
+    expect(result.normalized.get("sortBy")).toBe("createdAt");
+    expect(result.normalized.get("sortOrder")).toBe("desc");
+    expect(result.changed).toBe(true); // sortOrderが付与されるため
+  });
+
+  it("sortOrderが未指定の場合、sortOrder=descが付与される", () => {
+    const result = normalizeHomeSearchParams({ mode: "all" });
+
+    expect(result.normalized.get("sortOrder")).toBe("desc");
+    expect(result.changed).toBe(true);
+  });
+
+  it("sortOrderが不正値の場合、sortOrder=descに正規化される", () => {
+    const result = normalizeHomeSearchParams({
+      mode: "all",
+      sortOrder: "hoge",
+    });
+
+    expect(result.normalized.get("sortOrder")).toBe("desc");
+    expect(result.changed).toBe(true);
+  });
+
+  it("sortOrder=ascの場合、そのまま維持される（ただしsortByが付与されるためchanged=true）", () => {
+    const result = normalizeHomeSearchParams({
+      mode: "all",
+      sortOrder: "asc",
+    });
+
+    expect(result.normalized.get("sortBy")).toBe("updatedAt");
+    expect(result.normalized.get("sortOrder")).toBe("asc");
+    expect(result.changed).toBe(true); // sortByが付与されるため
+  });
+
+  it("sortOrder=descの場合、そのまま維持される（ただしsortByが付与されるためchanged=true）", () => {
+    const result = normalizeHomeSearchParams({
+      mode: "all",
+      sortOrder: "desc",
+    });
+
+    expect(result.normalized.get("sortBy")).toBe("updatedAt");
+    expect(result.normalized.get("sortOrder")).toBe("desc");
+    expect(result.changed).toBe(true); // sortByが付与されるため
+  });
+
+  it("sortByとsortOrderが両方正しい場合、両方維持される", () => {
+    const result = normalizeHomeSearchParams({
+      mode: "all",
+      sortBy: "createdAt",
+      sortOrder: "asc",
+    });
+
+    expect(result.normalized.get("sortBy")).toBe("createdAt");
+    expect(result.normalized.get("sortOrder")).toBe("asc");
+    expect(result.changed).toBe(false);
   });
 });

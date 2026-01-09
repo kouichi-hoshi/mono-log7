@@ -7,6 +7,8 @@ export interface PostsQueryKeyParams {
   authorId: string;
   mode?: "all" | PostMode;
   view?: "trash";
+  sortBy?: "updatedAt" | "createdAt";
+  sortOrder?: "asc" | "desc";
 }
 
 export type PostsQueryKey = [typeof POSTS_QUERY_ROOT, PostsQueryKeyParams];

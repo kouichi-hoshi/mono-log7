@@ -522,4 +522,101 @@ describe("PostList", () => {
       expect(mockPostRepository.findMany).toHaveBeenCalledTimes(2);
     });
   });
+
+  it("ソートUIボタン群（更新順/投稿順・昇順/降順）が表示される", () => {
+    renderWithQueryClient(<PostList authorId={TEST_AUTHOR_ID} />);
+
+    // PostSortControlsが表示される
+    expect(screen.getByTestId("post-sort-controls")).toBeInTheDocument();
+
+    // グループ1: 更新順/投稿順リンク（asChildでLinkとしてレンダリング）
+    expect(screen.getByRole("link", { name: /更新順/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /投稿順/i })).toBeInTheDocument();
+
+    // グループ2: 昇順/降順リンク
+    expect(screen.getByRole("link", { name: /昇順/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /降順/i })).toBeInTheDocument();
+  });
+
+  it("sortBy/sortOrderの初期値がupdatedAt/descであること", async () => {
+    renderWithQueryClient(<PostList authorId={TEST_AUTHOR_ID} />);
+
+    await waitFor(() => {
+      expect(mockPostRepository.findMany).toHaveBeenCalledWith({
+        authorId: TEST_AUTHOR_ID,
+        limit: 10,
+        sortBy: "updatedAt",
+        sortOrder: "desc",
+        status: "active",
+        cursor: undefined,
+      });
+    });
+  });
+
+  it("ソートリンククリックでURLクエリが更新される", () => {
+    renderWithQueryClient(<PostList authorId={TEST_AUTHOR_ID} />);
+
+    // 投稿順リンクのhrefを確認
+    const createdSortLink = screen.getByRole("link", { name: /投稿順/i });
+    expect(createdSortLink).toHaveAttribute(
+      "href",
+      expect.stringContaining("sortBy=createdAt"),
+    );
+
+    // 昇順リンクのhrefを確認
+    const ascLink = screen.getByRole("link", { name: /昇順/i });
+    expect(ascLink).toHaveAttribute(
+      "href",
+      expect.stringContaining("sortOrder=asc"),
+    );
+  });
+
+  it("sortBy=createdAt, sortOrder=ascがfindManyに渡される", async () => {
+    mockPostRepository.findMany.mockResolvedValue({
+      posts: [],
+      nextCursor: undefined,
+    });
+
+    renderWithQueryClient(
+      <PostList authorId={TEST_AUTHOR_ID} sortBy="createdAt" sortOrder="asc" />,
+    );
+
+    await waitFor(() => {
+      expect(mockPostRepository.findMany).toHaveBeenCalledWith({
+        authorId: TEST_AUTHOR_ID,
+        limit: 10,
+        sortBy: "createdAt",
+        sortOrder: "asc",
+        status: "active",
+        cursor: undefined,
+      });
+    });
+  });
+
+  it("view=trashでもsortBy/sortOrderがfindManyに渡される", async () => {
+    mockPostRepository.findMany.mockResolvedValue({
+      posts: [],
+      nextCursor: undefined,
+    });
+
+    renderWithQueryClient(
+      <PostList
+        authorId={TEST_AUTHOR_ID}
+        view="trash"
+        sortBy="createdAt"
+        sortOrder="asc"
+      />,
+    );
+
+    await waitFor(() => {
+      expect(mockPostRepository.findMany).toHaveBeenCalledWith({
+        authorId: TEST_AUTHOR_ID,
+        limit: 10,
+        sortBy: "createdAt",
+        sortOrder: "asc",
+        status: "trashed",
+        cursor: undefined,
+      });
+    });
+  });
 });

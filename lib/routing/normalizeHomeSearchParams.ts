@@ -4,14 +4,20 @@
  * 正規化ルール:
  * - mode: `all|memo|todo|diary` 以外は `all` にする。常に `mode` をURLに含める
  * - view: `trash` のみ許可（それ以外は削除）
+ * - sortBy: `updatedAt|createdAt` 以外は `updatedAt` にする。常に `sortBy` をURLに含める
+ * - sortOrder: `asc|desc` 以外は `desc` にする。常に `sortOrder` をURLに含める
  * - それ以外のクエリ（tags/errorTest等）は保持
  */
 
 const VALID_MODES = ["all", "memo", "todo", "diary"] as const;
 const VALID_VIEWS = ["trash"] as const;
+const VALID_SORT_BY = ["updatedAt", "createdAt"] as const;
+const VALID_SORT_ORDER = ["asc", "desc"] as const;
 
 type ValidMode = (typeof VALID_MODES)[number];
 type ValidView = (typeof VALID_VIEWS)[number];
+type ValidSortBy = (typeof VALID_SORT_BY)[number];
+type ValidSortOrder = (typeof VALID_SORT_ORDER)[number];
 
 export interface NormalizeResult {
   normalized: URLSearchParams;
@@ -51,17 +57,59 @@ export function normalizeHomeSearchParams(
     changed = true;
   }
 
-  // mode/viewが複数指定されていた場合も正規化対象とみなす（canonical URLの一意性確保）
+  // sortByの正規化: 常に含める。不正値は`updatedAt`にする
+  const sortByArray = Array.isArray(input.sortBy)
+    ? input.sortBy
+    : [input.sortBy];
+  const sortByValue = sortByArray[0];
+  const normalizedSortBy: ValidSortBy =
+    sortByValue && VALID_SORT_BY.includes(sortByValue as ValidSortBy)
+      ? (sortByValue as ValidSortBy)
+      : "updatedAt";
+  normalized.set("sortBy", normalizedSortBy);
+  // sortByが未指定または不正値の場合のみchangedをtrueにする
+  if (!sortByValue || sortByValue !== normalizedSortBy) {
+    changed = true;
+  }
+
+  // sortOrderの正規化: 常に含める。不正値は`desc`にする
+  const sortOrderArray = Array.isArray(input.sortOrder)
+    ? input.sortOrder
+    : [input.sortOrder];
+  const sortOrderValue = sortOrderArray[0];
+  const normalizedSortOrder: ValidSortOrder =
+    sortOrderValue &&
+    VALID_SORT_ORDER.includes(sortOrderValue as ValidSortOrder)
+      ? (sortOrderValue as ValidSortOrder)
+      : "desc";
+  normalized.set("sortOrder", normalizedSortOrder);
+  // sortOrderが未指定または不正値の場合のみchangedをtrueにする
+  if (!sortOrderValue || sortOrderValue !== normalizedSortOrder) {
+    changed = true;
+  }
+
+  // mode/view/sortBy/sortOrderが複数指定されていた場合も正規化対象とみなす（canonical URLの一意性確保）
   if (Array.isArray(input.mode) && input.mode.length > 1) {
     changed = true;
   }
   if (Array.isArray(input.view) && input.view.length > 1) {
     changed = true;
   }
+  if (Array.isArray(input.sortBy) && input.sortBy.length > 1) {
+    changed = true;
+  }
+  if (Array.isArray(input.sortOrder) && input.sortOrder.length > 1) {
+    changed = true;
+  }
 
-  // それ以外のクエリパラメータは保持（mode/view以外）
+  // それ以外のクエリパラメータは保持（mode/view/sortBy/sortOrder以外）
   Object.entries(input).forEach(([key, value]) => {
-    if (key === "mode" || key === "view") {
+    if (
+      key === "mode" ||
+      key === "view" ||
+      key === "sortBy" ||
+      key === "sortOrder"
+    ) {
       return; // 既に処理済み
     }
     if (value === undefined) {

@@ -15,6 +15,8 @@ interface AuthenticatedLandingProps {
   searchParams?: {
     mode?: string;
     view?: string;
+    sortBy?: string;
+    sortOrder?: string;
   };
 }
 
@@ -33,6 +35,17 @@ export function AuthenticatedLanding({
         : "all";
 
   const view = searchParams.view === "trash" ? "trash" : undefined;
+
+  // sortBy/sortOrder の検証と正規化
+  const sortBy =
+    searchParams.sortBy === "updatedAt" || searchParams.sortBy === "createdAt"
+      ? (searchParams.sortBy as "updatedAt" | "createdAt")
+      : "updatedAt";
+
+  const sortOrder =
+    searchParams.sortOrder === "asc" || searchParams.sortOrder === "desc"
+      ? (searchParams.sortOrder as "asc" | "desc")
+      : "desc";
 
   // 編集中の投稿を管理
   const [editingPost, setEditingPost] = useState<PostDTO | undefined>(
@@ -68,6 +81,8 @@ export function AuthenticatedLanding({
                 authorId={session.userId}
                 mode={mode}
                 view={view}
+                sortBy={sortBy}
+                sortOrder={sortOrder}
                 onEdit={handleEdit}
               />
             </div>
