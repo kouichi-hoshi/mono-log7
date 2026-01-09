@@ -312,6 +312,20 @@ async function stubHardDelete(postId: string): Promise<void> {
 }
 
 /**
+ * スタブCRUD: ゴミ箱を空にする（全trashed投稿を削除）
+ */
+async function stubEmptyTrash(authorId: string): Promise<void> {
+  if (!shouldUseStubPosts()) {
+    throw new Error("スタブ投稿は無効です");
+  }
+
+  // statusがtrashedの投稿をすべて削除
+  stubPosts = stubPosts.filter(
+    (p) => !(p.authorId === authorId && p.status === "trashed"),
+  );
+}
+
+/**
  * テスト用: スタブストアリセット（開発環境のみ）
  */
 export function resetStubStore(): void {
@@ -401,6 +415,17 @@ export const postRepository = {
   async hardDelete(postId: string): Promise<void> {
     if (shouldUseStubPosts()) {
       return await stubHardDelete(postId);
+    }
+    // 本番実装はフェーズ2で実装
+    throw new Error("本番投稿CRUDは未実装です");
+  },
+
+  /**
+   * ゴミ箱を空にする（全trashed投稿を削除）
+   */
+  async emptyTrash(authorId: string): Promise<void> {
+    if (shouldUseStubPosts()) {
+      return await stubEmptyTrash(authorId);
     }
     // 本番実装はフェーズ2で実装
     throw new Error("本番投稿CRUDは未実装です");

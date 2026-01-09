@@ -1,6 +1,7 @@
 import dayjs from "dayjs";
 import { Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import type { PostDTO } from "@/lib/postRepository";
 
 interface PostItemProps {
@@ -9,6 +10,8 @@ interface PostItemProps {
   view?: "trash";
   onEdit?: (post: PostDTO) => void;
   onDelete?: (postId: string) => void;
+  isSelected?: boolean;
+  onSelectChange?: (postId: string, checked: boolean) => void;
 }
 
 /**
@@ -21,6 +24,8 @@ export function PostItem({
   view,
   onEdit,
   onDelete,
+  isSelected = false,
+  onSelectChange,
 }: PostItemProps) {
   // tiptap JSONからテキストを抽出（暫定実装）
   let textContent = "";
@@ -62,6 +67,18 @@ export function PostItem({
       }`}
     >
       <div className="flex items-start gap-4">
+        {/* ゴミ箱ビューでは選択チェックボックスを表示 */}
+        {view === "trash" && (
+          <div className="pt-1 shrink-0">
+            <Checkbox
+              checked={isSelected}
+              onCheckedChange={(checked) => {
+                onSelectChange?.(post.postId, checked === true);
+              }}
+              aria-label={`${post.postId}を選択`}
+            />
+          </div>
+        )}
         <div className="flex-1 min-w-0">
           {/* モードと更新日（横並び） */}
           <div className="flex items-center gap-3 mb-2">
@@ -106,6 +123,22 @@ export function PostItem({
                 onDelete?.(post.postId);
               }}
               aria-label="ごみ箱へ移動"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
+        {/* ゴミ箱ビューでは削除ボタンを表示 */}
+        {view === "trash" && (
+          <div className="flex items-center gap-1 shrink-0">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0 text-slate-400 hover:text-red-500 hover:bg-red-50"
+              onClick={() => {
+                onDelete?.(post.postId);
+              }}
+              aria-label="完全に削除"
             >
               <Trash2 className="h-4 w-4" />
             </Button>

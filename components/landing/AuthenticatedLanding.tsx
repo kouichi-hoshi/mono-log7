@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { AuthenticatedHeader } from "@/components/layout/AuthenticatedHeader";
 import { PostEditor } from "@/components/timeline/PostEditor";
 import { PostList } from "@/components/timeline/PostList";
@@ -24,6 +26,8 @@ export function AuthenticatedLanding({
   session,
   searchParams = {},
 }: AuthenticatedLandingProps) {
+  const router = useRouter();
+  const searchParamsHook = useSearchParams();
   // mode の検証と正規化
   const mode =
     searchParams.mode === "memo" ||
@@ -59,6 +63,53 @@ export function AuthenticatedLanding({
   const handleFinishEdit = () => {
     setEditingPost(undefined);
   };
+
+  // エラーシミュレーション（開発環境のみ）
+  useEffect(() => {
+    // 本番環境では無効化
+    if (process.env.NODE_ENV === "production") {
+      return;
+    }
+
+    const errorTest = searchParamsHook.get("errorTest");
+    if (!errorTest) {
+      return;
+    }
+
+    // errorTestの値に応じてsonner通知を表示
+    switch (errorTest) {
+      case "auth":
+        toast.error("認証エラーが発生しました");
+        break;
+      case "authorization":
+        toast.error("権限がありません");
+        break;
+      case "notfound":
+        toast.error("対象が見つかりません");
+        break;
+      case "validation":
+        toast.error("入力内容に不備があります");
+        break;
+      case "server":
+        toast.error("サーバーエラーが発生しました");
+        break;
+      case "generic":
+        toast.error("エラーが発生しました");
+        break;
+      case "success":
+        toast.success("操作が正常に完了しました");
+        break;
+      default:
+        // 未知の値は無視
+        break;
+    }
+
+    // errorTestパラメータをURLから除去
+    const params = new URLSearchParams(searchParamsHook.toString());
+    params.delete("errorTest");
+    const newUrl = params.toString() ? `/?${params.toString()}` : "/";
+    router.replace(newUrl);
+  }, [searchParamsHook, router]);
 
   return (
     <div className="min-h-screen bg-slate-50">
