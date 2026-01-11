@@ -55,6 +55,14 @@ describe("postRepositoryConfig", () => {
     expect(shouldUseStubPosts()).toBe(false);
   });
 
+  // テスト環境（NODE_ENV=test）では、NEXT_PUBLIC_USE_STUB_POSTSがtrueでもfalseを返すことを確認
+  it("NODE_ENV=test では false を返す", () => {
+    setEnv("NODE_ENV", "test");
+    setEnv("NEXT_PUBLIC_USE_STUB_POSTS", "true");
+
+    expect(shouldUseStubPosts()).toBe(false);
+  });
+
   // NEXT_PUBLIC_USE_STUB_POSTS=falseの場合、NODE_ENVがdevelopmentでもfalseを返すことを確認
   it("NEXT_PUBLIC_USE_STUB_POSTS=false では false を返す", () => {
     setEnv("NODE_ENV", "development");

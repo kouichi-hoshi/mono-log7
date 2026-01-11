@@ -17,20 +17,47 @@ const mockedShouldUseStubPosts = shouldUseStubPosts as jest.MockedFunction<
 describe("postRepository", () => {
   let postRepository: typeof import("@/lib/postRepository").postRepository;
   let resetStubStore: typeof import("@/lib/postRepository").resetStubStore;
+  const originalNodeEnv = process.env.NODE_ENV;
+  const originalFetch = global.fetch;
+  const fetchMock = jest.fn();
 
   beforeAll(async () => {
+    process.env.NODE_ENV = "development";
+    global.fetch = fetchMock as unknown as typeof global.fetch;
     mockedShouldUseStubPosts.mockReturnValue(true);
     const module = await import("@/lib/postRepository");
     postRepository = module.postRepository;
     resetStubStore = module.resetStubStore;
   });
 
+  afterAll(() => {
+    process.env.NODE_ENV = originalNodeEnv;
+    global.fetch = originalFetch;
+  });
+
   // 各テスト前にスタブを有効化し、ストアをリセットしてクリーンな状態にする
   beforeEach(() => {
+    process.env.NODE_ENV = "development";
     mockedShouldUseStubPosts.mockReturnValue(true);
     resetStubStore();
     jest.clearAllMocks();
     mockedShouldUseStubPosts.mockReturnValue(true);
+    fetchMock.mockResolvedValue(
+      createFetchResponse(
+        {
+          postId: "api-post-1",
+          authorId: "author-1",
+          contentJSON: "{}",
+          status: "active",
+          mode: "memo",
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          deletedAt: null,
+        },
+        true,
+        200,
+      ),
+    );
   });
 
   /**
@@ -38,17 +65,20 @@ describe("postRepository", () => {
    * スタブ有効/無効時の挙動を確認する
    */
   describe("スタブ切り替え", () => {
-    // スタブ無効時に本番実装が呼ばれ、未実装エラーが発生することを確認
-    it("スタブが無効な場合は本番未実装エラーになる", async () => {
+    // スタブ無効時にAPI経由で呼ばれることを確認
+    it("スタブが無効な場合はAPIを呼び出す", async () => {
       mockedShouldUseStubPosts.mockReturnValue(false);
 
-      await expect(
-        postRepository.create({
-          authorId: "test-user",
-          contentJSON: '{"type":"doc"}',
-          mode: "memo",
-        }),
-      ).rejects.toThrow("本番投稿CRUDは未実装です");
+      await postRepository.create({
+        authorId: "test-user",
+        contentJSON: '{"type":"doc"}',
+        mode: "memo",
+      });
+
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/posts",
+        expect.objectContaining({ method: "POST" }),
+      );
     });
 
     // スタブ有効時にcreateメソッドが正常に動作することを確認
@@ -404,3 +434,12 @@ describe("postRepository", () => {
     });
   });
 });
+
+function createFetchResponse(body: unknown, ok = true, status = 200) {
+  return {
+    ok,
+    status,
+    statusText: `${status}`,
+    json: async () => body,
+  };
+}

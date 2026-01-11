@@ -1,0 +1,45 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DATABASE_DIRECT_URL")
+}
+
+enum PostMode {
+  memo
+  todo
+  diary
+}
+
+enum PostStatus {
+  active
+  trashed
+}
+
+model User {
+  id        String   @id
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  posts Post[]
+}
+
+model Post {
+  postId     String     @id @default(cuid())
+  authorId   String
+  contentJSON String
+  status     PostStatus @default(active)
+  mode       PostMode
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+  deletedAt  DateTime?
+
+  author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([authorId, status, mode, updatedAt])
+  @@index([authorId, createdAt])
+}
+

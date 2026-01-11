@@ -350,8 +350,16 @@ export const postRepository = {
     if (shouldUseStubPosts()) {
       return await stubCreate(input);
     }
-    // 本番実装はフェーズ2で実装
-    throw new Error("本番投稿CRUDは未実装です");
+    const res = await fetch("/api/posts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    });
+    if (!res.ok) {
+      throw new Error(`Failed to create post: ${res.statusText}`);
+    }
+    const data = (await res.json()) as ApiPostDTO;
+    return deserializePost(data);
   },
 
   /**
@@ -361,8 +369,32 @@ export const postRepository = {
     if (shouldUseStubPosts()) {
       return await stubFindMany(options);
     }
-    // 本番実装はフェーズ2で実装
-    throw new Error("本番投稿CRUDは未実装です");
+    const params = new URLSearchParams();
+    if (options?.authorId) params.set("authorId", options.authorId);
+    if (options?.mode) params.set("mode", options.mode);
+    if (options?.status) params.set("status", options.status);
+    if (options?.offset !== undefined)
+      params.set("offset", String(options.offset));
+    if (options?.limit !== undefined)
+      params.set("limit", String(options.limit));
+    if (options?.cursor) params.set("cursor", options.cursor);
+    if (options?.sortBy) params.set("sortBy", options.sortBy);
+    if (options?.sortOrder) params.set("sortOrder", options.sortOrder);
+
+    const res = await fetch(`/api/posts?${params.toString()}`, {
+      method: "GET",
+    });
+    if (!res.ok) {
+      throw new Error(`Failed to fetch posts: ${res.statusText}`);
+    }
+    const data = (await res.json()) as {
+      posts: ApiPostDTO[];
+      nextCursor?: string;
+    };
+    return {
+      posts: data.posts.map(deserializePost),
+      nextCursor: data.nextCursor,
+    };
   },
 
   /**
@@ -372,8 +404,15 @@ export const postRepository = {
     if (shouldUseStubPosts()) {
       return await stubFindById(postId);
     }
-    // 本番実装はフェーズ2で実装
-    return null;
+    const res = await fetch(`/api/posts/${postId}`, { method: "GET" });
+    if (res.status === 404) {
+      return null;
+    }
+    if (!res.ok) {
+      throw new Error(`Failed to fetch post: ${res.statusText}`);
+    }
+    const data = (await res.json()) as ApiPostDTO;
+    return deserializePost(data);
   },
 
   /**
@@ -383,8 +422,16 @@ export const postRepository = {
     if (shouldUseStubPosts()) {
       return await stubUpdate(postId, input);
     }
-    // 本番実装はフェーズ2で実装
-    throw new Error("本番投稿CRUDは未実装です");
+    const res = await fetch(`/api/posts/${postId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    });
+    if (!res.ok) {
+      throw new Error(`Failed to update post: ${res.statusText}`);
+    }
+    const data = (await res.json()) as ApiPostDTO;
+    return deserializePost(data);
   },
 
   /**
@@ -394,8 +441,12 @@ export const postRepository = {
     if (shouldUseStubPosts()) {
       return await stubSoftDelete(postId);
     }
-    // 本番実装はフェーズ2で実装
-    throw new Error("本番投稿CRUDは未実装です");
+    const res = await fetch(`/api/posts/${postId}/soft`, {
+      method: "POST",
+    });
+    if (!res.ok) {
+      throw new Error(`Failed to soft delete post: ${res.statusText}`);
+    }
   },
 
   /**
@@ -405,8 +456,12 @@ export const postRepository = {
     if (shouldUseStubPosts()) {
       return await stubRestore(postId);
     }
-    // 本番実装はフェーズ2で実装
-    throw new Error("本番投稿CRUDは未実装です");
+    const res = await fetch(`/api/posts/${postId}/restore`, {
+      method: "POST",
+    });
+    if (!res.ok) {
+      throw new Error(`Failed to restore post: ${res.statusText}`);
+    }
   },
 
   /**
@@ -416,8 +471,12 @@ export const postRepository = {
     if (shouldUseStubPosts()) {
       return await stubHardDelete(postId);
     }
-    // 本番実装はフェーズ2で実装
-    throw new Error("本番投稿CRUDは未実装です");
+    const res = await fetch(`/api/posts/${postId}/hard`, {
+      method: "DELETE",
+    });
+    if (!res.ok) {
+      throw new Error(`Failed to hard delete post: ${res.statusText}`);
+    }
   },
 
   /**
@@ -427,7 +486,28 @@ export const postRepository = {
     if (shouldUseStubPosts()) {
       return await stubEmptyTrash(authorId);
     }
-    // 本番実装はフェーズ2で実装
-    throw new Error("本番投稿CRUDは未実装です");
+    const res = await fetch(`/api/posts/empty-trash`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ authorId }),
+    });
+    if (!res.ok) {
+      throw new Error(`Failed to empty trash: ${res.statusText}`);
+    }
   },
 };
+
+type ApiPostDTO = Omit<PostDTO, "createdAt" | "updatedAt" | "deletedAt"> & {
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
+};
+
+function deserializePost(post: ApiPostDTO): PostDTO {
+  return {
+    ...post,
+    createdAt: new Date(post.createdAt),
+    updatedAt: new Date(post.updatedAt),
+    deletedAt: post.deletedAt ? new Date(post.deletedAt) : null,
+  };
+}
