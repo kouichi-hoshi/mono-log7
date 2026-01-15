@@ -22,6 +22,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
+  type FindManyCursor,
   type FindManyResult,
   type PostDTO,
   type PostMode,
@@ -164,7 +165,7 @@ export function PostList({
     Error,
     InfiniteData<FindManyResult>,
     typeof queryKey,
-    string | undefined
+    FindManyCursor | undefined
   >({
     queryKey,
     queryFn: async ({ pageParam }) => {
@@ -177,7 +178,7 @@ export function PostList({
     getNextPageParam: (lastPage) => {
       return lastPage.nextCursor;
     },
-    initialPageParam: undefined as string | undefined,
+    initialPageParam: undefined as FindManyCursor | undefined,
   });
 
   // 全ページの投稿を平坦化

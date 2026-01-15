@@ -39,7 +39,8 @@ model Post {
 
   author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
 
-  @@index([authorId, status, mode, updatedAt])
-  @@index([authorId, createdAt])
+  @@index([authorId, status, updatedAt, postId])
+  @@index([authorId, status, createdAt, postId])
+  @@index([authorId, status, mode, updatedAt, postId])
+  @@index([authorId, status, mode, createdAt, postId])
 }
-

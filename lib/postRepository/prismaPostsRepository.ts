@@ -46,26 +46,53 @@ export const prismaPostsRepository = {
     const limit = options.limit ?? 10;
     const sortBy = options.sortBy ?? "updatedAt";
     const sortOrder = options.sortOrder ?? "desc";
+    const cursor = options.cursor;
 
     const where = {
       ...(options.authorId && { authorId: options.authorId }),
       ...(options.mode && { mode: options.mode }),
       ...(options.status && { status: options.status }),
+      ...(cursor
+        ? {
+            OR:
+              sortOrder === "desc"
+                ? [
+                    {
+                      [sortBy]: { lt: cursor.sortValue },
+                    },
+                    {
+                      AND: [
+                        { [sortBy]: cursor.sortValue },
+                        { postId: { lt: cursor.postId } },
+                      ],
+                    },
+                  ]
+                : [
+                    {
+                      [sortBy]: { gt: cursor.sortValue },
+                    },
+                    {
+                      AND: [
+                        { [sortBy]: cursor.sortValue },
+                        { postId: { gt: cursor.postId } },
+                      ],
+                    },
+                  ],
+          }
+        : {}),
     };
-
-    // cursor か offset のどちらかでページング。cursor 優先。
-    const useCursor = Boolean(options.cursor);
 
     const posts = await prisma.post.findMany({
       where,
-      orderBy: {
-        [sortBy]: sortOrder,
-      },
-      ...(useCursor
-        ? {
-            cursor: { postId: options.cursor },
-            skip: 1,
-          }
+      orderBy: [
+        {
+          [sortBy]: sortOrder,
+        },
+        { postId: sortOrder },
+      ],
+      // cursor 条件指定時は where でページングしているため offset は無視
+      ...(cursor
+        ? {}
         : {
             skip: options.offset ?? 0,
           }),
@@ -74,10 +101,14 @@ export const prismaPostsRepository = {
 
     const hasNext = posts.length > limit;
     const sliced = posts.slice(0, limit);
+    const last = sliced[sliced.length - 1];
 
     return {
       posts: sliced.map(mapToDTO),
-      nextCursor: hasNext ? sliced[sliced.length - 1]?.postId : undefined,
+      nextCursor:
+        hasNext && last
+          ? { sortValue: last[sortBy], postId: last.postId }
+          : undefined,
     };
   },
 

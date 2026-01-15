@@ -60,6 +60,10 @@ describe("postRepository", () => {
     );
   });
 
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
   /**
    * スタブ切り替え機能のテスト
    * スタブ有効/無効時の挙動を確認する
@@ -241,6 +245,53 @@ describe("postRepository", () => {
         expect(updatedAsc[i].updatedAt.getTime()).toBeLessThanOrEqual(
           updatedAsc[i + 1].updatedAt.getTime(),
         );
+      }
+    });
+
+    it("cursorページングで同一timestampでも重複なく取得できる", async () => {
+      jest.useFakeTimers();
+      const base = new Date("2024-01-01T00:00:00.000Z");
+      jest.setSystemTime(base);
+
+      const authorId = "cursor-user";
+      for (let i = 0; i < 3; i++) {
+        await postRepository.create({
+          authorId,
+          contentJSON: `{"type":"doc","content":[{"type":"text","text":"${i}"}]}`,
+          mode: "memo",
+        });
+      }
+
+      const first = await postRepository.findMany({
+        authorId,
+        sortBy: "updatedAt",
+        sortOrder: "asc",
+        limit: 2,
+      });
+      expect(first.posts).toHaveLength(2);
+      expect(first.nextCursor).toBeDefined();
+
+      const second = await postRepository.findMany({
+        authorId,
+        sortBy: "updatedAt",
+        sortOrder: "asc",
+        limit: 2,
+        cursor: first.nextCursor,
+      });
+
+      const ids = [...first.posts, ...second.posts].map((p) => p.postId);
+      expect(new Set(ids).size).toBe(ids.length);
+      const allSorted = [...first.posts, ...second.posts];
+      for (let i = 0; i < allSorted.length - 1; i++) {
+        const cur = allSorted[i];
+        const next = allSorted[i + 1];
+        if (cur.updatedAt.getTime() === next.updatedAt.getTime()) {
+          expect(cur.postId < next.postId).toBe(true);
+        } else {
+          expect(cur.updatedAt.getTime()).toBeLessThanOrEqual(
+            next.updatedAt.getTime(),
+          );
+        }
       }
     });
   });

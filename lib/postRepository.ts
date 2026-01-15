@@ -7,6 +7,10 @@ import { shouldUseStubPosts } from "@/lib/config/postRepositoryConfig";
 // ドメインモデル型定義
 export type PostMode = "memo" | "todo" | "diary";
 export type PostStatus = "active" | "trashed";
+export interface FindManyCursor {
+  sortValue: Date;
+  postId: string;
+}
 
 export interface PostDTO {
   postId: string;
@@ -36,14 +40,14 @@ export interface FindManyOptions {
   status?: PostStatus;
   offset?: number;
   limit?: number;
-  cursor?: string; // カーソルベースページング用（投稿ID）
+  cursor?: FindManyCursor; // カーソルベースページング用（sortValue + postId）
   sortBy?: "createdAt" | "updatedAt";
   sortOrder?: "asc" | "desc";
 }
 
 export interface FindManyResult {
   posts: PostDTO[];
-  nextCursor?: string; // 次のページがある場合のカーソル（最後の投稿ID）
+  nextCursor?: FindManyCursor; // 次のページがある場合のカーソル
 }
 
 // スタブストア（メモリ上）
@@ -164,6 +168,9 @@ async function stubFindMany(
 
   let filtered = [...stubPosts];
 
+  const sortBy = options.sortBy || "updatedAt";
+  const sortOrder = options.sortOrder || "desc";
+
   // フィルタリング
   if (options.authorId) {
     filtered = filtered.filter((p) => p.authorId === options.authorId);
@@ -175,39 +182,55 @@ async function stubFindMany(
     filtered = filtered.filter((p) => p.status === options.status);
   }
 
-  // ソート
-  const sortBy = options.sortBy || "updatedAt";
-  const sortOrder = options.sortOrder || "desc";
+  // ソート（postId をタイブレークに含める）
   filtered.sort((a, b) => {
     const aVal = a[sortBy].getTime();
     const bVal = b[sortBy].getTime();
-    return sortOrder === "asc" ? aVal - bVal : bVal - aVal;
+    const primary = sortOrder === "asc" ? aVal - bVal : bVal - aVal;
+    if (primary !== 0) return primary;
+    return sortOrder === "asc"
+      ? a.postId.localeCompare(b.postId)
+      : b.postId.localeCompare(a.postId);
   });
 
-  // カーソルベースページング
-  let startIndex = 0;
+  // カーソルベースフィルタ
   if (options.cursor) {
-    const cursorIndex = filtered.findIndex((p) => p.postId === options.cursor);
-    if (cursorIndex !== -1) {
-      // カーソル以降の投稿を取得（カーソル自体は含めない）
-      startIndex = cursorIndex + 1;
-    } else {
-      // カーソルが見つからない場合は空を返す
-      return { posts: [] };
-    }
-  } else if (options.offset !== undefined) {
-    // offset が指定されている場合は offset ベース
-    startIndex = options.offset;
+    const cursor = options.cursor;
+    filtered = filtered.filter((p) => {
+      const cmp =
+        sortOrder === "asc"
+          ? p[sortBy].getTime() - cursor.sortValue.getTime()
+          : cursor.sortValue.getTime() - p[sortBy].getTime();
+
+      if (cmp === 0) {
+        return sortOrder === "asc"
+          ? p.postId > cursor.postId
+          : p.postId < cursor.postId;
+      }
+      return cmp > 0;
+    });
   }
+
+  // ソート
+  // cursor指定時はwhereで絞り込んだうえで先頭から取得する。offsetはcursor未指定時のみ反映。
+  const startIndex =
+    options.cursor !== undefined || options.offset === undefined
+      ? 0
+      : options.offset;
 
   const limit = options.limit || 10;
   const paginated = filtered.slice(startIndex, startIndex + limit);
 
   // 次のページがあるかチェック
   const hasNextPage = startIndex + limit < filtered.length;
-  const nextCursor = hasNextPage
-    ? paginated[paginated.length - 1]?.postId
-    : undefined;
+  const last = paginated[paginated.length - 1];
+  const nextCursor =
+    hasNextPage && last
+      ? {
+          sortValue: last[sortBy],
+          postId: last.postId,
+        }
+      : undefined;
 
   return {
     posts: paginated.map((p) => ({ ...p })),
@@ -338,6 +361,52 @@ export function resetStubStore(): void {
   }
 }
 
+function encodeCursor(cursor: FindManyCursor): string {
+  const payload = JSON.stringify({
+    sortValue: cursor.sortValue.toISOString(),
+    postId: cursor.postId,
+  });
+  if (typeof Buffer !== "undefined") {
+    return Buffer.from(payload, "utf-8").toString("base64");
+  }
+  if (typeof btoa !== "undefined") {
+    return btoa(payload);
+  }
+  throw new Error("Base64 encoding is not supported in this environment");
+}
+
+function decodeCursor(value: string): FindManyCursor | undefined {
+  try {
+    const json =
+      typeof Buffer !== "undefined"
+        ? Buffer.from(value, "base64").toString("utf-8")
+        : typeof atob !== "undefined"
+          ? atob(value)
+          : null;
+    if (!json) return undefined;
+    const parsed = JSON.parse(json) as {
+      sortValue?: string;
+      postId?: string;
+    };
+    if (
+      typeof parsed.sortValue !== "string" ||
+      typeof parsed.postId !== "string"
+    ) {
+      return undefined;
+    }
+    const sortValue = new Date(parsed.sortValue);
+    if (Number.isNaN(sortValue.getTime())) {
+      return undefined;
+    }
+    return {
+      sortValue,
+      postId: parsed.postId,
+    };
+  } catch {
+    return undefined;
+  }
+}
+
 /**
  * 投稿リポジトリ（公開API）
  * 環境変数に応じてスタブ/本番を切り替える
@@ -377,7 +446,7 @@ export const postRepository = {
       params.set("offset", String(options.offset));
     if (options?.limit !== undefined)
       params.set("limit", String(options.limit));
-    if (options?.cursor) params.set("cursor", options.cursor);
+    if (options?.cursor) params.set("cursor", encodeCursor(options.cursor));
     if (options?.sortBy) params.set("sortBy", options.sortBy);
     if (options?.sortOrder) params.set("sortOrder", options.sortOrder);
 
@@ -393,7 +462,7 @@ export const postRepository = {
     };
     return {
       posts: data.posts.map(deserializePost),
-      nextCursor: data.nextCursor,
+      nextCursor: data.nextCursor ? decodeCursor(data.nextCursor) : undefined,
     };
   },
 

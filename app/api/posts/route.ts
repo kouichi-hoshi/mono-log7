@@ -21,6 +21,48 @@ function parseSortOrder(value: string | null): "asc" | "desc" {
   return value === "asc" ? "asc" : "desc";
 }
 
+function decodeCursor(value: string | null) {
+  if (!value) return undefined;
+  try {
+    const json =
+      typeof Buffer !== "undefined"
+        ? Buffer.from(value, "base64").toString("utf-8")
+        : typeof atob !== "undefined"
+          ? atob(value)
+          : null;
+    if (!json) return undefined;
+    const parsed = JSON.parse(json) as {
+      sortValue?: string;
+      postId?: string;
+    };
+    if (
+      typeof parsed.sortValue !== "string" ||
+      typeof parsed.postId !== "string"
+    ) {
+      return undefined;
+    }
+    const sortValue = new Date(parsed.sortValue);
+    if (Number.isNaN(sortValue.getTime())) {
+      return undefined;
+    }
+    return {
+      sortValue,
+      postId: parsed.postId,
+    };
+  } catch (_error) {
+    return undefined;
+  }
+}
+
+function encodeCursor(cursor?: { sortValue: Date; postId: string }) {
+  if (!cursor) return undefined;
+  const payload = JSON.stringify({
+    sortValue: cursor.sortValue.toISOString(),
+    postId: cursor.postId,
+  });
+  return Buffer.from(payload, "utf-8").toString("base64");
+}
+
 export async function GET(request: Request) {
   const blocked = guardProductionPostsApi();
   if (blocked) return blocked;
@@ -38,7 +80,7 @@ export async function GET(request: Request) {
     searchParams.get("limit") !== null
       ? Number(searchParams.get("limit"))
       : undefined;
-  const cursor = searchParams.get("cursor") ?? undefined;
+  const cursor = decodeCursor(searchParams.get("cursor"));
   const sortBy = parseSortBy(searchParams.get("sortBy"));
   const sortOrder = parseSortOrder(searchParams.get("sortOrder"));
 
@@ -55,6 +97,7 @@ export async function GET(request: Request) {
 
   return NextResponse.json({
     ...result,
+    nextCursor: encodeCursor(result.nextCursor),
     posts: result.posts.map((p) => ({
       ...p,
       createdAt: p.createdAt.toISOString(),
