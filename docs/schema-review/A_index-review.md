@@ -1,3 +1,13 @@
+---
+status: done
+completed_at: 2026-01-15
+summary: >
+  Post一覧の複合カーソル（sortBy+postId）と mode有無×createdAt/updatedAt
+  インデックスを導入し、マイグレーション 20260115010218_posts_index_and_cursor_rework
+  を作成。API/スタブ/クライアントを新cursor仕様に揃え、無効cursorは無視する
+  バリデーションを追加。
+---
+
 # A. インデックス設計の見直しメモ（Post 一覧取得）
 
 ## 背景
