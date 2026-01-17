@@ -1,6 +1,17 @@
 /** @jest-environment node */
 import { jest } from "@jest/globals";
 
+type MockedPostRecord = {
+  postId: string;
+  authorId: string;
+  contentJSON: string;
+  status: "active" | "trashed";
+  mode: "memo" | "todo" | "diary";
+  createdAt: Date;
+  updatedAt: Date;
+  deletedAt: Date | null;
+};
+
 jest.mock("@/lib/db/prisma", () => ({
   prisma: {
     post: {
@@ -14,27 +25,34 @@ jest.mock("@/lib/db/prisma", () => ({
   },
 }));
 
-const mockedPrisma = jest.requireMock("@/lib/db/prisma").prisma as {
-  post: {
-    findMany: jest.Mock;
-    findUnique: jest.Mock;
-    update: jest.Mock;
-    delete: jest.Mock;
-    deleteMany: jest.Mock;
-    create: jest.Mock;
+const mockedPrismaModule = jest.requireMock("@/lib/db/prisma") as {
+  prisma: {
+    post: {
+      findMany: jest.MockedFunction<
+        (args?: unknown) => Promise<MockedPostRecord[]>
+      >;
+      findUnique: jest.MockedFunction<
+        (args: unknown) => Promise<MockedPostRecord | null>
+      >;
+      update: jest.Mock;
+      delete: jest.Mock;
+      deleteMany: jest.Mock;
+      create: jest.Mock;
+    };
   };
 };
+const mockedPrisma = mockedPrismaModule.prisma;
 
 describe("prismaPostsRepository consistency guard", () => {
-  const originalEnv = process.env.NODE_ENV;
+  const originalEnv = process.env;
 
   beforeEach(() => {
-    process.env.NODE_ENV = "development";
+    process.env = { ...originalEnv, NODE_ENV: "development" };
     jest.clearAllMocks();
   });
 
   afterAll(() => {
-    process.env.NODE_ENV = originalEnv;
+    process.env = originalEnv;
   });
 
   it("findManyが不整合レコードを受け取ったら例外を投げる", async () => {
