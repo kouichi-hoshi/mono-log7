@@ -63,7 +63,11 @@ export const prismaPostsRepository = {
 
   async findMany(options: FindManyOptions = {}): Promise<FindManyResult> {
     const limit = options.limit ?? 10;
-    const sortBy = options.sortBy ?? "updatedAt";
+    const sortBy =
+      (options.sortBy === "deletedAt" && options.status !== "trashed"
+        ? undefined
+        : options.sortBy) ??
+      (options.status === "trashed" ? "deletedAt" : "updatedAt");
     const sortOrder = options.sortOrder ?? "desc";
     const cursor = options.cursor;
 
@@ -121,12 +125,13 @@ export const prismaPostsRepository = {
     const hasNext = posts.length > limit;
     const sliced = posts.slice(0, limit);
     const last = sliced[sliced.length - 1];
+    const lastSortValue = last?.[sortBy];
 
     return {
       posts: sliced.map(mapToDTO),
       nextCursor:
-        hasNext && last
-          ? { sortValue: last[sortBy], postId: last.postId }
+        hasNext && last && lastSortValue
+          ? { sortValue: lastSortValue, postId: last.postId }
           : undefined,
     };
   },

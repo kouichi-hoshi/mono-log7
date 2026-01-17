@@ -42,7 +42,7 @@ export interface FindManyOptions {
   offset?: number;
   limit?: number;
   cursor?: FindManyCursor; // カーソルベースページング用（sortValue + postId）
-  sortBy?: "createdAt" | "updatedAt";
+  sortBy?: "createdAt" | "updatedAt" | "deletedAt";
   sortOrder?: "asc" | "desc";
 }
 
@@ -169,8 +169,19 @@ async function stubFindMany(
 
   let filtered = [...stubPosts];
 
-  const sortBy = options.sortBy || "updatedAt";
+  const sortBy =
+    (options.sortBy === "deletedAt" && options.status !== "trashed"
+      ? undefined
+      : options.sortBy) ||
+    (options.status === "trashed" ? "deletedAt" : "updatedAt");
   const sortOrder = options.sortOrder || "desc";
+  const getSortDate = (post: StubPost): Date => {
+    const value = post[sortBy];
+    if (!(value instanceof Date)) {
+      throw new Error(`Invalid sort value for ${sortBy}`);
+    }
+    return value;
+  };
 
   // フィルタリング
   if (options.authorId) {
@@ -185,8 +196,8 @@ async function stubFindMany(
 
   // ソート（postId をタイブレークに含める）
   filtered.sort((a, b) => {
-    const aVal = a[sortBy].getTime();
-    const bVal = b[sortBy].getTime();
+    const aVal = getSortDate(a).getTime();
+    const bVal = getSortDate(b).getTime();
     const primary = sortOrder === "asc" ? aVal - bVal : bVal - aVal;
     if (primary !== 0) return primary;
     return sortOrder === "asc"
@@ -200,8 +211,8 @@ async function stubFindMany(
     filtered = filtered.filter((p) => {
       const cmp =
         sortOrder === "asc"
-          ? p[sortBy].getTime() - cursor.sortValue.getTime()
-          : cursor.sortValue.getTime() - p[sortBy].getTime();
+          ? getSortDate(p).getTime() - cursor.sortValue.getTime()
+          : cursor.sortValue.getTime() - getSortDate(p).getTime();
 
       if (cmp === 0) {
         return sortOrder === "asc"
@@ -225,10 +236,11 @@ async function stubFindMany(
   // 次のページがあるかチェック
   const hasNextPage = startIndex + limit < filtered.length;
   const last = paginated[paginated.length - 1];
+  const lastSortValue = last ? getSortDate(last) : undefined;
   const nextCursor =
-    hasNextPage && last
+    hasNextPage && last && lastSortValue
       ? {
-          sortValue: last[sortBy],
+          sortValue: lastSortValue,
           postId: last.postId,
         }
       : undefined;

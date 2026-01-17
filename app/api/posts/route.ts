@@ -13,7 +13,15 @@ function parseStatus(value: string | null): PostStatus | undefined {
   return undefined;
 }
 
-function parseSortBy(value: string | null): "createdAt" | "updatedAt" {
+function parseSortBy(
+  value: string | null,
+  status?: PostStatus,
+): "createdAt" | "updatedAt" | "deletedAt" {
+  if (status === "trashed") {
+    if (value === "deletedAt") return "deletedAt";
+    if (value === "createdAt" || value === "updatedAt") return value;
+    return "deletedAt";
+  }
   return value === "createdAt" ? "createdAt" : "updatedAt";
 }
 
@@ -81,7 +89,7 @@ export async function GET(request: Request) {
       ? Number(searchParams.get("limit"))
       : undefined;
   const cursor = decodeCursor(searchParams.get("cursor"));
-  const sortBy = parseSortBy(searchParams.get("sortBy"));
+  const sortBy = parseSortBy(searchParams.get("sortBy"), status);
   const sortOrder = parseSortOrder(searchParams.get("sortOrder"));
 
   const result = await prismaPostsRepository.findMany({

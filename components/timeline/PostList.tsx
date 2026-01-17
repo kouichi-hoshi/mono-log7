@@ -40,7 +40,7 @@ interface PostListProps {
   authorId: string;
   mode?: "all" | PostMode;
   view?: "trash";
-  sortBy?: "updatedAt" | "createdAt";
+  sortBy?: "updatedAt" | "createdAt" | "deletedAt";
   sortOrder?: "asc" | "desc";
   onEdit?: (post: PostDTO) => void;
 }
@@ -97,13 +97,16 @@ export function PostList({
   authorId,
   mode = "all",
   view,
-  sortBy = "updatedAt",
+  sortBy,
   sortOrder = "desc",
   onEdit,
 }: PostListProps) {
   const queryClient = useQueryClient();
 
   const isTrashView = view === "trash";
+  const effectiveSortBy =
+    (sortBy === "deletedAt" && !isTrashView ? undefined : sortBy) ??
+    (isTrashView ? "deletedAt" : "updatedAt");
 
   // 選択状態管理（ゴミ箱ビューでのみ使用）
   const [selectedPostIds, setSelectedPostIds] = useState<Set<string>>(
@@ -121,8 +124,8 @@ export function PostList({
   // - sortBy/sortOrderは常に含める（キャッシュを分離するため）
   const queryKey = createPostsQueryKey(
     isTrashView
-      ? { authorId, view: "trash", sortBy, sortOrder }
-      : { authorId, mode, sortBy, sortOrder },
+      ? { authorId, view: "trash", sortBy: effectiveSortBy, sortOrder }
+      : { authorId, mode, sortBy: effectiveSortBy, sortOrder },
   );
 
   const getAuthorTrashQueryKeys = () => {
@@ -146,8 +149,8 @@ export function PostList({
   const findManyOptions = {
     authorId,
     limit: 10,
-    sortBy: sortBy as "updatedAt" | "createdAt",
-    sortOrder: sortOrder as "asc" | "desc",
+    sortBy: effectiveSortBy,
+    sortOrder,
     ...(mode !== "all" && !isTrashView && { mode }),
     ...(isTrashView && { status: "trashed" as const }),
     ...(!isTrashView && { status: "active" as const }),

@@ -401,7 +401,7 @@ describe("PostList", () => {
       expect(mockPostRepository.findMany).toHaveBeenCalledWith({
         authorId: TEST_AUTHOR_ID,
         limit: 10,
-        sortBy: "updatedAt",
+        sortBy: "deletedAt",
         sortOrder: "desc",
         status: "trashed",
         cursor: undefined,
@@ -447,7 +447,7 @@ describe("PostList", () => {
       expect(mockPostRepository.findMany).toHaveBeenCalledWith({
         authorId: TEST_AUTHOR_ID,
         limit: 10,
-        sortBy: "updatedAt",
+        sortBy: "deletedAt",
         sortOrder: "desc",
         status: "trashed",
         cursor: undefined,
@@ -549,6 +549,17 @@ describe("PostList", () => {
     // グループ2: 昇順/降順リンク
     expect(screen.getByRole("link", { name: /昇順/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /降順/i })).toBeInTheDocument();
+  });
+
+  it("view=trashでは削除順のソートボタンが表示される", () => {
+    mockPostRepository.findMany.mockResolvedValue({
+      posts: [],
+      nextCursor: undefined,
+    });
+
+    renderWithQueryClient(<PostList authorId={TEST_AUTHOR_ID} view="trash" />);
+
+    expect(screen.getByRole("link", { name: /削除順/i })).toBeInTheDocument();
   });
 
   it("sortBy/sortOrderの初期値がupdatedAt/descであること", async () => {

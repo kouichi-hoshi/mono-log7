@@ -17,6 +17,17 @@ export function ViewSwitcher() {
     if (params.get("view") === "trash") {
       params.delete("view");
     }
+    // ゴミ箱専用のソートキーは通常ビューでは削除
+    if (params.get("sortBy") === "deletedAt") {
+      params.set("sortBy", "updatedAt");
+    }
+    if (!params.get("sortBy")) {
+      params.set("sortBy", "updatedAt");
+    }
+    // sortOrderのデフォルトを補完
+    if (!params.get("sortOrder")) {
+      params.set("sortOrder", "desc");
+    }
     return `/?${params.toString()}`;
   };
 
@@ -25,12 +36,25 @@ export function ViewSwitcher() {
     const params = new URLSearchParams(searchParams.toString());
     if (view) {
       params.set("view", view);
+      // ゴミ箱ビューでは削除日時ソートをデフォルトにする
+      params.set("sortBy", "deletedAt");
+      // ゴミ箱は「捨てた順」= 降順を強制
+      params.set("sortOrder", "desc");
     } else {
       params.delete("view");
+      if (params.get("sortBy") === "deletedAt") {
+        params.set("sortBy", "updatedAt");
+      }
+    }
+    if (!params.get("sortBy")) {
+      params.set("sortBy", view ? "deletedAt" : "updatedAt");
     }
     // mode が未設定の場合は all を設定
     if (!params.get("mode")) {
       params.set("mode", "all");
+    }
+    if (!params.get("sortOrder")) {
+      params.set("sortOrder", "desc");
     }
     return `/?${params.toString()}`;
   };

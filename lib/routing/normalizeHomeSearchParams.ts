@@ -4,19 +4,22 @@
  * 正規化ルール:
  * - mode: `all|memo|todo|diary` 以外は `all` にする。常に `mode` をURLに含める
  * - view: `trash` のみ許可（それ以外は削除）
- * - sortBy: `updatedAt|createdAt` 以外は `updatedAt` にする。常に `sortBy` をURLに含める
+ * - sortBy: viewに応じて許可値/デフォルトを切り替える。常に `sortBy` をURLに含める
+ *   - 通常ビュー: `updatedAt|createdAt` 以外は `updatedAt`
+ *   - ゴミ箱ビュー(view=trash): `deletedAt|updatedAt|createdAt` 以外は `deletedAt`
  * - sortOrder: `asc|desc` 以外は `desc` にする。常に `sortOrder` をURLに含める
  * - それ以外のクエリ（tags/errorTest等）は保持
  */
 
 const VALID_MODES = ["all", "memo", "todo", "diary"] as const;
 const VALID_VIEWS = ["trash"] as const;
-const VALID_SORT_BY = ["updatedAt", "createdAt"] as const;
+const VALID_SORT_BY_DEFAULT = ["updatedAt", "createdAt"] as const;
+const VALID_SORT_BY_TRASH = ["deletedAt", "updatedAt", "createdAt"] as const;
 const VALID_SORT_ORDER = ["asc", "desc"] as const;
 
 type ValidMode = (typeof VALID_MODES)[number];
 type ValidView = (typeof VALID_VIEWS)[number];
-type ValidSortBy = (typeof VALID_SORT_BY)[number];
+type ValidSortBy = (typeof VALID_SORT_BY_TRASH)[number];
 type ValidSortOrder = (typeof VALID_SORT_ORDER)[number];
 
 export interface NormalizeResult {
@@ -50,22 +53,29 @@ export function normalizeHomeSearchParams(
   // viewの正規化: `trash` のみ許可
   const viewArray = Array.isArray(input.view) ? input.view : [input.view];
   const viewValue = viewArray[0];
-  if (viewValue && VALID_VIEWS.includes(viewValue as ValidView)) {
-    normalized.set("view", viewValue);
+  const normalizedView =
+    viewValue && VALID_VIEWS.includes(viewValue as ValidView)
+      ? (viewValue as ValidView)
+      : undefined;
+  if (normalizedView) {
+    normalized.set("view", normalizedView);
   } else if (viewValue) {
     // 不正なview値は削除（changedフラグを立てる）
     changed = true;
   }
 
-  // sortByの正規化: 常に含める。不正値は`updatedAt`にする
+  // sortByの正規化: viewに応じて許可値/デフォルトを切り替える。常に含める。
   const sortByArray = Array.isArray(input.sortBy)
     ? input.sortBy
     : [input.sortBy];
   const sortByValue = sortByArray[0];
+  const validSortBy =
+    normalizedView === "trash" ? VALID_SORT_BY_TRASH : VALID_SORT_BY_DEFAULT;
+  const defaultSortBy = normalizedView === "trash" ? "deletedAt" : "updatedAt";
   const normalizedSortBy: ValidSortBy =
-    sortByValue && VALID_SORT_BY.includes(sortByValue as ValidSortBy)
+    sortByValue && validSortBy.includes(sortByValue as ValidSortBy)
       ? (sortByValue as ValidSortBy)
-      : "updatedAt";
+      : defaultSortBy;
   normalized.set("sortBy", normalizedSortBy);
   // sortByが未指定または不正値の場合のみchangedをtrueにする
   if (!sortByValue || sortByValue !== normalizedSortBy) {

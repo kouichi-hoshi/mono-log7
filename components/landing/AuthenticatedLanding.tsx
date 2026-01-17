@@ -39,12 +39,18 @@ export function AuthenticatedLanding({
         : "all";
 
   const view = searchParams.view === "trash" ? "trash" : undefined;
+  const isTrashView = view === "trash";
 
   // sortBy/sortOrder の検証と正規化
   const sortBy =
-    searchParams.sortBy === "updatedAt" || searchParams.sortBy === "createdAt"
-      ? (searchParams.sortBy as "updatedAt" | "createdAt")
-      : "updatedAt";
+    searchParams.sortBy === "deletedAt" && isTrashView
+      ? "deletedAt"
+      : searchParams.sortBy === "updatedAt" ||
+          searchParams.sortBy === "createdAt"
+        ? (searchParams.sortBy as "updatedAt" | "createdAt")
+        : isTrashView
+          ? "deletedAt"
+          : "updatedAt";
 
   const sortOrder =
     searchParams.sortOrder === "asc" || searchParams.sortOrder === "desc"

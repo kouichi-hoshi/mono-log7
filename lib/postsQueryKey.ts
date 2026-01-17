@@ -7,7 +7,7 @@ export interface PostsQueryKeyParams {
   authorId: string;
   mode?: "all" | PostMode;
   view?: "trash";
-  sortBy?: "updatedAt" | "createdAt";
+  sortBy?: "updatedAt" | "createdAt" | "deletedAt";
   sortOrder?: "asc" | "desc";
 }
 

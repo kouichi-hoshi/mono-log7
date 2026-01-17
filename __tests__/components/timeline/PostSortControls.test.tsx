@@ -58,4 +58,14 @@ describe("PostSortControls", () => {
     expect(params.get("sortBy")).toBe("createdAt");
     expect(params.get("sortOrder")).toBe("desc");
   });
+
+  it("view=trashでsortBy未指定の場合、削除順リンクでdeletedAt/descが補完される", () => {
+    renderWithQuery("view=trash");
+
+    const params = getParamsFromLink(/削除順/);
+    expect(params.get("mode")).toBe("all");
+    expect(params.get("view")).toBe("trash");
+    expect(params.get("sortBy")).toBe("deletedAt");
+    expect(params.get("sortOrder")).toBe("desc");
+  });
 });

@@ -69,7 +69,10 @@ describe("ViewSwitcher", () => {
     render(<ViewSwitcher />);
 
     const allLink = screen.getByRole("link", { name: "すべて" });
-    expect(allLink).toHaveAttribute("href", "/?mode=all");
+    expect(allLink).toHaveAttribute(
+      "href",
+      "/?mode=all&sortBy=updatedAt&sortOrder=desc",
+    );
   });
 
   it("「メモ」ボタンのリンクにmode=memoが含まれる", () => {
@@ -77,7 +80,10 @@ describe("ViewSwitcher", () => {
     render(<ViewSwitcher />);
 
     const memoLink = screen.getByRole("link", { name: "メモ" });
-    expect(memoLink).toHaveAttribute("href", "/?mode=memo");
+    expect(memoLink).toHaveAttribute(
+      "href",
+      "/?mode=memo&sortBy=updatedAt&sortOrder=desc",
+    );
   });
 
   it("「ToDo」ボタンのリンクにmode=todoが含まれる", () => {
@@ -85,7 +91,10 @@ describe("ViewSwitcher", () => {
     render(<ViewSwitcher />);
 
     const todoLink = screen.getByRole("link", { name: "ToDo" });
-    expect(todoLink).toHaveAttribute("href", "/?mode=todo");
+    expect(todoLink).toHaveAttribute(
+      "href",
+      "/?mode=todo&sortBy=updatedAt&sortOrder=desc",
+    );
   });
 
   it("view=trashのときmodeボタンをクリックするとviewパラメータが削除される", () => {
@@ -94,7 +103,10 @@ describe("ViewSwitcher", () => {
 
     const allLink = screen.getByRole("link", { name: "すべて" });
     // view=trashが削除され、mode=allのみになる
-    expect(allLink).toHaveAttribute("href", "/?mode=all");
+    expect(allLink).toHaveAttribute(
+      "href",
+      "/?mode=all&sortBy=updatedAt&sortOrder=desc",
+    );
   });
 
   it("既存のクエリパラメータ（sortBy/sortOrder）が保持される", () => {
@@ -107,6 +119,34 @@ describe("ViewSwitcher", () => {
       "href",
       "/?mode=memo&sortBy=createdAt&sortOrder=asc",
     );
+  });
+
+  it("ごみ箱リンクにview=trashと削除順のデフォルトが付与される", () => {
+    render(<ViewSwitcher />);
+
+    const trashLink = screen.getByRole("link", { name: "ごみ箱を見る" });
+    const params = new URLSearchParams(
+      (trashLink.getAttribute("href") ?? "").replace("/?", ""),
+    );
+    expect(params.get("view")).toBe("trash");
+    expect(params.get("sortBy")).toBe("deletedAt");
+    expect(params.get("sortOrder")).toBe("desc");
+    expect(params.get("mode")).toBe("all");
+  });
+
+  it("ゴミ箱リンクでは既存のsortOrder=ascでもdescに上書きされる", () => {
+    __setSearchParams({
+      mode: "all",
+      sortBy: "updatedAt",
+      sortOrder: "asc",
+    });
+    render(<ViewSwitcher />);
+
+    const trashLink = screen.getByRole("link", { name: "ごみ箱を見る" });
+    const params = new URLSearchParams(
+      (trashLink.getAttribute("href") ?? "").replace("/?", ""),
+    );
+    expect(params.get("sortOrder")).toBe("desc");
   });
 
   it("modeが未指定のときは「すべて」がアクティブになる", () => {

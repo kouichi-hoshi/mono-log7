@@ -56,6 +56,7 @@ describe("normalizeHomeSearchParams", () => {
 
     expect(result.normalized.get("view")).toBe("trash");
     expect(result.normalized.get("mode")).toBe("all"); // modeが未指定なのでallが付与される
+    expect(result.normalized.get("sortBy")).toBe("deletedAt");
     expect(result.changed).toBe(true); // modeが付与されたためchanged=true
   });
 
@@ -74,7 +75,7 @@ describe("normalizeHomeSearchParams", () => {
 
     expect(result.normalized.get("mode")).toBe("memo");
     expect(result.normalized.get("view")).toBe("trash");
-    expect(result.normalized.get("sortBy")).toBe("updatedAt");
+    expect(result.normalized.get("sortBy")).toBe("deletedAt");
     expect(result.normalized.get("sortOrder")).toBe("desc");
     expect(result.changed).toBe(true); // sortBy/sortOrderが付与されるため
   });
@@ -153,6 +154,7 @@ describe("normalizeHomeSearchParams", () => {
 
     expect(result.normalized.get("mode")).toBe("all");
     expect(result.normalized.get("view")).toBe("trash");
+    expect(result.normalized.get("sortBy")).toBe("deletedAt");
     expect(result.changed).toBe(true);
   });
 
@@ -164,6 +166,7 @@ describe("normalizeHomeSearchParams", () => {
 
     expect(result.normalized.get("mode")).toBe("all");
     expect(result.normalized.get("view")).toBe("trash");
+    expect(result.normalized.get("sortBy")).toBe("deletedAt");
     expect(result.changed).toBe(true);
   });
 
@@ -174,10 +177,27 @@ describe("normalizeHomeSearchParams", () => {
     expect(result.changed).toBe(true);
   });
 
+  it("view=trashかつsortByが未指定の場合、sortBy=deletedAtが付与される", () => {
+    const result = normalizeHomeSearchParams({ view: "trash" });
+
+    expect(result.normalized.get("sortBy")).toBe("deletedAt");
+    expect(result.changed).toBe(true);
+  });
+
   it("sortByが不正値の場合、sortBy=updatedAtに正規化される", () => {
     const result = normalizeHomeSearchParams({ mode: "all", sortBy: "hoge" });
 
     expect(result.normalized.get("sortBy")).toBe("updatedAt");
+    expect(result.changed).toBe(true);
+  });
+
+  it("view=trashかつsortByが不正値の場合、sortBy=deletedAtに正規化される", () => {
+    const result = normalizeHomeSearchParams({
+      view: "trash",
+      sortBy: "hoge",
+    });
+
+    expect(result.normalized.get("sortBy")).toBe("deletedAt");
     expect(result.changed).toBe(true);
   });
 
