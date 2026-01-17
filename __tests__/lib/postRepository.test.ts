@@ -321,6 +321,30 @@ describe("postRepository", () => {
 
       expect(found).toBeNull();
     });
+
+    it("APIレスポンスがstatus/deletedAtで不整合なら例外を投げる", async () => {
+      mockedShouldUseStubPosts.mockReturnValue(false);
+      fetchMock.mockResolvedValueOnce(
+        createFetchResponse(
+          {
+            postId: "api-post-2",
+            authorId: "author-1",
+            contentJSON: "{}",
+            status: "active",
+            mode: "memo",
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            deletedAt: new Date().toISOString(), // active なのに deletedAt が非null
+          },
+          true,
+          200,
+        ),
+      );
+
+      await expect(postRepository.findById("api-post-2")).rejects.toThrow(
+        /inconsistent/i,
+      );
+    });
   });
 
   /**

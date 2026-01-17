@@ -3,6 +3,7 @@
  * スタブ/本番の投稿CRUD処理を切り替える接続ポイント
  */
 import { shouldUseStubPosts } from "@/lib/config/postRepositoryConfig";
+import { assertPostStatusDeletedAtConsistency } from "@/lib/postRepository/consistency";
 
 // ドメインモデル型定義
 export type PostMode = "memo" | "todo" | "diary";
@@ -278,6 +279,19 @@ async function stubUpdate(
   return { ...updated };
 }
 
+function setStubTrashState(postId: string, trashed: boolean): void {
+  const index = stubPosts.findIndex((p) => p.postId === postId);
+  if (index === -1) {
+    throw new Error(`投稿が見つかりません: ${postId}`);
+  }
+
+  stubPosts[index] = {
+    ...stubPosts[index],
+    status: trashed ? "trashed" : "active",
+    deletedAt: trashed ? new Date() : null,
+  };
+}
+
 /**
  * スタブCRUD: ソフト削除（ゴミ箱に移動）
  */
@@ -286,16 +300,7 @@ async function stubSoftDelete(postId: string): Promise<void> {
     throw new Error("スタブ投稿は無効です");
   }
 
-  const index = stubPosts.findIndex((p) => p.postId === postId);
-  if (index === -1) {
-    throw new Error(`投稿が見つかりません: ${postId}`);
-  }
-
-  stubPosts[index] = {
-    ...stubPosts[index],
-    status: "trashed",
-    deletedAt: new Date(),
-  };
+  setStubTrashState(postId, true);
 }
 
 /**
@@ -306,16 +311,7 @@ async function stubRestore(postId: string): Promise<void> {
     throw new Error("スタブ投稿は無効です");
   }
 
-  const index = stubPosts.findIndex((p) => p.postId === postId);
-  if (index === -1) {
-    throw new Error(`投稿が見つかりません: ${postId}`);
-  }
-
-  stubPosts[index] = {
-    ...stubPosts[index],
-    status: "active",
-    deletedAt: null,
-  };
+  setStubTrashState(postId, false);
 }
 
 /**
@@ -573,10 +569,16 @@ type ApiPostDTO = Omit<PostDTO, "createdAt" | "updatedAt" | "deletedAt"> & {
 };
 
 function deserializePost(post: ApiPostDTO): PostDTO {
-  return {
+  const dto: PostDTO = {
     ...post,
     createdAt: new Date(post.createdAt),
     updatedAt: new Date(post.updatedAt),
     deletedAt: post.deletedAt ? new Date(post.deletedAt) : null,
   };
+  assertPostStatusDeletedAtConsistency({
+    status: dto.status,
+    deletedAt: dto.deletedAt,
+    postId: dto.postId,
+  });
+  return dto;
 }

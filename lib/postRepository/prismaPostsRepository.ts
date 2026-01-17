@@ -6,6 +6,7 @@ import type {
   PostDTO,
   UpdatePostInput,
 } from "@/lib/postRepository";
+import { assertPostStatusDeletedAtConsistency } from "@/lib/postRepository/consistency";
 
 function mapToDTO(post: {
   postId: string;
@@ -17,6 +18,11 @@ function mapToDTO(post: {
   updatedAt: Date;
   deletedAt: Date | null;
 }): PostDTO {
+  assertPostStatusDeletedAtConsistency({
+    status: post.status,
+    deletedAt: post.deletedAt,
+    postId: post.postId,
+  });
   return {
     postId: post.postId,
     authorId: post.authorId,
@@ -27,6 +33,19 @@ function mapToDTO(post: {
     updatedAt: post.updatedAt,
     deletedAt: post.deletedAt,
   };
+}
+
+async function updateTrashState(
+  postId: string,
+  trashed: boolean,
+): Promise<void> {
+  await prisma.post.update({
+    where: { postId },
+    data: {
+      status: trashed ? "trashed" : "active",
+      deletedAt: trashed ? new Date() : null,
+    },
+  });
 }
 
 export const prismaPostsRepository = {
@@ -134,17 +153,11 @@ export const prismaPostsRepository = {
   },
 
   async softDelete(postId: string): Promise<void> {
-    await prisma.post.update({
-      where: { postId },
-      data: { status: "trashed", deletedAt: new Date() },
-    });
+    await updateTrashState(postId, true);
   },
 
   async restore(postId: string): Promise<void> {
-    await prisma.post.update({
-      where: { postId },
-      data: { status: "active", deletedAt: null },
-    });
+    await updateTrashState(postId, false);
   },
 
   async hardDelete(postId: string): Promise<void> {
